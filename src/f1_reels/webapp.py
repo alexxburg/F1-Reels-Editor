@@ -280,12 +280,28 @@ def create_app(
             "message": "queued",
             "name": reel_name,
             "files": [],
+            "progress": 0,
+            "stage": "queued",
         }
 
         def run_job() -> None:
             record = jobs[job_id]
             record["status"] = "running"
             record["message"] = "rendering"
+
+            def on_progress(stage: str, pct: float) -> None:
+                try:
+                    v = float(pct)
+                except Exception:
+                    return
+                try:
+                    if v != v:  # NaN
+                        return
+                except Exception:
+                    return
+                v = max(0.0, min(100.0, v))
+                record["stage"] = str(stage)
+                record["progress"] = round(v, 1)
             try:
                 detected_font = font_path
                 style = SubtitleStyle(
@@ -369,6 +385,7 @@ def create_app(
                     synthesize_speech=synthesize,
                     subtitle_overlays=overlays,
                     instructions=voice_direction,
+                    on_progress=on_progress,
                 )
                 mp4_path = outputs_dir / f"{reel_name}.mp4"
                 srt_path = outputs_dir / f"{reel_name}.srt"
@@ -379,6 +396,8 @@ def create_app(
                     record["status"] = "done"
                     record["message"] = "done"
                     record["files"] = made
+                    record["progress"] = 100.0
+                    record["stage"] = "finalize"
                 else:
                     record["status"] = "error"
                     record["message"] = "render failed"
@@ -460,6 +479,8 @@ def create_app(
             "message": "done",
             "name": reel_name,
             "files": [p.name for p in sorted(outputs_dir.iterdir()) if p.is_file()],
+            "progress": 100.0,
+            "stage": "finalize",
         }
         jobs[job_id] = rebuilt
         return rebuilt

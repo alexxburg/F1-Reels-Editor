@@ -327,6 +327,22 @@ input[type="range"]::-moz-range-track {
   color: var(--xp-error-text);
 }
 
+/* Classic XP installer bar: white sunken inset track, segmented green fill. */
+.xp-progress {
+  margin-top: 0.5rem;
+  height: 18px;
+  background: #ffffff;
+  border: 2px inset #d4d0c8;
+  border-radius: 0;
+  overflow: hidden;
+}
+.xp-progress[hidden] { display: none !important; }
+.xp-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: repeating-linear-gradient(to right, #3c9e3c 0 10px, #ffffff 10px 12px);
+}
+
 /* Download actions as silver outset buttons. */
 .downloads {
   display: flex;

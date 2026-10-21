@@ -75,6 +75,102 @@ def _close_quietly(clip: Any | None) -> None:
         pass
 
 
+class _MoviepyProgress:
+    """Minimal proglog-compatible logger forwarding encode progress.
+
+    Maps encode fraction ``f`` (0..1) to overall ``50 + 45*f`` so the
+    UI bar moves 50->95 during ``write_videofile``.
+    """
+
+    def __init__(
+        self, on_progress: Callable[[str, float], None] | None = None
+    ) -> None:
+        self._on_progress = on_progress
+
+    @staticmethod
+    def encode_pct(fraction: float) -> float:
+        try:
+            f = float(fraction)
+        except Exception:
+            return 50.0
+        if f != f:  # NaN
+            return 50.0
+        if f < 0:
+            f = 0.0
+        if f > 1:
+            f = 1.0
+        return 50.0 + 45.0 * f
+
+    def _report(self, fraction: float) -> None:
+        if self._on_progress is None:
+            return
+        try:
+            self._on_progress("encode", self.encode_pct(fraction))
+        except Exception:
+            pass
+
+    def iter_bar(self, *args, **kwargs):
+        iterable = None
+        total = None
+        for key in ("total", "n_total", "length", "n", "size"):
+            if key in kwargs:
+                try:
+                    total = float(kwargs[key])
+                    break
+                except Exception:
+                    continue
+        if args:
+            candidate = args[0]
+            if candidate is not None and not isinstance(candidate, (str, bytes)):
+                try:
+                    iter(candidate)
+                    iterable = candidate
+                except Exception:
+                    iterable = None
+        if iterable is None:
+            for value in kwargs.values():
+                if value is None or isinstance(
+                    value, (str, bytes, int, float, bool)
+                ):
+                    continue
+                try:
+                    iter(value)
+                    iterable = value
+                    break
+                except Exception:
+                    continue
+        if iterable is None:
+            return
+            yield  # pragma: no cover - makes this a generator
+        if total is None:
+            try:
+                total = float(len(iterable))  # type: ignore[arg-type]
+            except Exception:
+                total = None
+        try:
+            total_f = float(total) if total else 0.0
+        except Exception:
+            total_f = 0.0
+        done = 0
+        for item in iterable:
+            yield item
+            done += 1
+            if total_f > 0:
+                self._report(done / total_f)
+
+    def __call__(self, *args, **kwargs):
+        return None
+
+    def __getattr__(self, name: str):
+        if name.startswith("__"):
+            raise AttributeError(name)
+
+        def _noop(*args, **kwargs):
+            return None
+
+        return _noop
+
+
 def edit_video(
     name: str,
     lines: Sequence[str],
@@ -87,6 +183,7 @@ def edit_video(
     crop_fn: Callable[[Any], Any] | None = None,
     instructions: str = "",
     fallback_path: str | Path | None = None,
+    on_progress: Callable[[str, float], None] | None = None,
 ) -> bool:
     """Edit a single reel; return ``True`` on success.
 
@@ -107,7 +204,17 @@ def edit_video(
             support it (ignored otherwise).
         fallback_path: Fallback background video used only when B-roll
             assembly fails and the path exists.
+        on_progress: Optional ``(stage, pct)`` callback where ``pct`` is
+            0-100. Never raises (calls are guarded).
     """
+    def _emit(stage: str, pct: float) -> None:
+        if on_progress is None:
+            return
+        try:
+            on_progress(stage, float(pct))
+        except Exception:
+            pass
+
     _ = instructions  # documented for providers; consumed by the TTS hook
     script = [line.strip() for line in lines if line.strip()]
     if not script:
@@ -167,6 +274,7 @@ def edit_video(
             target_dur,
             config.margin_final,
         )
+        _emit("voice", 5)
 
         # --- 2) Random B-roll (optionally cropped when bricks are raw). ---
         try:
@@ -189,6 +297,7 @@ def edit_video(
             else:
                 logger.error("%s: no bricks and no fallback video.", name)
                 return False
+        _emit("b-roll", 30)
 
         # --- 3) Subtitles, distributing word stamps across script blocks. ---
         subtitle_layers: list[Any] = []
@@ -221,6 +330,7 @@ def edit_video(
                     (i * span, min((i + 1) * span, usable_dur), block)
                     for i, block in enumerate(narratable)
                 ]
+        _emit("subtitles", 50)
 
         # --- 4) Audio: optional original bed + trimmed voice with fade-out. ---
         audio_tracks: list[Any] = []
@@ -292,7 +402,7 @@ def edit_video(
             fps=config.fps,
             preset="ultrafast",
             threads=config.threads,
-            logger=None,
+            logger=_MoviepyProgress(on_progress) if on_progress is not None else None,
         )
 
         if config.generate_srt:
@@ -304,6 +414,7 @@ def edit_video(
             usable_dur,
             float(video.duration) - usable_dur,
         )
+        _emit("finalize", 100)
         return True
 
     except Exception as exc:

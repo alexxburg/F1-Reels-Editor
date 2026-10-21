@@ -608,3 +608,45 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "logoff" in css.lower()
     assert "360px" in css
     assert "z-index: 101" in css
+
+
+def test_finished_job_reports_progress_100(tmp_path, monkeypatch):
+    app, webapp = _make_client(tmp_path, monkeypatch)
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        on_progress = kwargs.get("on_progress")
+        if callable(on_progress):
+            on_progress("voice", 5)
+            on_progress("b-roll", 30)
+            on_progress("subtitles", 50)
+            on_progress("encode", 95)
+            on_progress("finalize", 100)
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    job_id = client.post("/api/jobs", data=_post_fields()).json()["job_id"]
+    status = client.get(f"/api/jobs/{job_id}").json()
+    assert status["status"] == "done", status
+    assert status["progress"] == 100
+    assert status["stage"] == "finalize"
+
+
+def test_progress_markup_and_assets(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    html = client.get("/").text
+    assert 'id="progress"' in html
+    assert "xp-progress" in html
+    assert "xp-progress-fill" in html
+    js = client.get("/static/app.js").text
+    assert "job.progress" in js
+    assert "xp-progress-fill" in js
+    css = client.get("/static/style.css").text
+    assert "xp-progress" in css
+    assert "repeating-linear-gradient" in css
+    assert "3c9e3c" in css.lower()

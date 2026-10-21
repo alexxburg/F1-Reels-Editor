@@ -28,6 +28,8 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   const form = event.target;
   const status = document.getElementById("status");
   const download = document.getElementById("download");
+  const progress = document.getElementById("progress");
+  const fill = progress ? progress.querySelector(".xp-progress-fill") : null;
   const submitButton = form.querySelector('button[type="submit"]');
   const setStatus = (text, state) => {
     status.textContent = text;
@@ -42,6 +44,9 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     submitButton.disabled = true;
   }
   download.hidden = true;
+  if (progress) {
+    progress.hidden = true;
+  }
   const response = await fetch("/api/jobs", {
     method: "POST",
     body: new FormData(form),
@@ -60,6 +65,9 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     const res = await fetch(`/api/jobs/${jobId}`);
     if (!res.ok) {
       setStatus("poll failed: " + res.status, "error");
+      if (progress) {
+        progress.hidden = true;
+      }
       clearInterval(poll);
       if (submitButton) {
         submitButton.disabled = false;
@@ -68,6 +76,14 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     }
     const job = await res.json();
     setStatus(`${job.status}: ${job.message}`, job.status);
+    if (progress && fill) {
+      if (typeof job.progress === "number" && job.status !== "done" && job.status !== "error") {
+        progress.hidden = false;
+        fill.style.width = `${Math.max(0, Math.min(100, job.progress))}%`;
+      } else {
+        progress.hidden = true;
+      }
+    }
     if (job.status === "done") {
       clearInterval(poll);
       download.href = `/api/jobs/${jobId}/download`;
