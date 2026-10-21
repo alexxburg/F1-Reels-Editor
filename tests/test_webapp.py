@@ -202,10 +202,11 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     for target in ("name", "script_lines", "voice_direction", "speed", "punch", "margin", "seed"):
         assert f'<label for="{target}"' in html, target
         assert f'id="{target}"' in html, target
-    # Status tray panel + download actions + app script.
+    # Status tray panel + single download action + app script.
     assert 'id="status"' in html
     assert 'id="download"' in html
-    assert 'id="download-srt"' in html
+    assert ">Download</a>" in html
+    assert 'id="download-srt"' not in html
     assert '<script src="/static/app.js"></script>' in html
     # Empty data-URI favicon silences /favicon.ico 404s on LAN.
     assert '<link rel="icon" href="data:,"' in html
