@@ -154,6 +154,35 @@ def test_delete_job_removes_files_and_record(tmp_path, monkeypatch):
     assert client.delete("/api/jobs/../config").status_code in (404, 422)
 
 
+def test_endpoints_survive_restart_from_disk(tmp_path, monkeypatch):
+    """After a restart (empty in-memory store) status/download/delete
+    must still work from the job files on disk."""
+    from f1_reels import webapp
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    job_id = client.post("/api/jobs", data=_post_fields()).json()["job_id"]
+    # Simulate a container restart: in-memory records are gone, files remain.
+    app.state.jobs.clear()
+    status = client.get(f"/api/jobs/{job_id}")
+    assert status.status_code == 200, status.text
+    assert status.json()["status"] == "done"
+    dl = client.get(f"/api/jobs/{job_id}/download")
+    assert dl.status_code == 200
+    assert dl.content == b"fake-mp4"
+    assert client.delete(f"/api/jobs/{job_id}").status_code == 200
+    assert client.get(f"/api/jobs/{job_id}").status_code == 404
+
+
 def test_missing_key_returns_400(tmp_path, monkeypatch):
     from f1_reels import webapp
 

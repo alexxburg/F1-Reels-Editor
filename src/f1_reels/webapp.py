@@ -439,11 +439,36 @@ def create_app(
         reels.sort(key=lambda entry: entry["modified"], reverse=True)
         return {"reels": reels}
 
+    def _record_for(job_id: str) -> dict[str, Any] | None:
+        """Return the job record, rebuilding it from disk when the
+        in-memory store was lost (e.g. container restart)."""
+        record = jobs.get(job_id)
+        if record is not None:
+            return record
+        if not re.fullmatch(r"[0-9a-f]{32}", job_id or ""):
+            return None
+        outputs_dir = jobs_root / job_id / "outputs"
+        if not outputs_dir.is_dir():
+            return None
+        mp4s = sorted(outputs_dir.glob("*.mp4"))
+        if not mp4s:
+            return None
+        reel_name = mp4s[0].stem
+        rebuilt = {
+            "job_id": job_id,
+            "status": "done",
+            "message": "done",
+            "name": reel_name,
+            "files": [p.name for p in sorted(outputs_dir.iterdir()) if p.is_file()],
+        }
+        jobs[job_id] = rebuilt
+        return rebuilt
+
     @app.get("/api/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:
         from fastapi import HTTPException
 
-        record = jobs.get(job_id)
+        record = _record_for(job_id)
         if record is None:
             raise HTTPException(status_code=404, detail="unknown job")
         return record
@@ -452,7 +477,7 @@ def create_app(
     def job_download(job_id: str, format: str = "mp4"):  # noqa: A002
         from fastapi import HTTPException
 
-        record = jobs.get(job_id)
+        record = _record_for(job_id)
         if record is None:
             raise HTTPException(status_code=404, detail="unknown job")
         reel_name = str(record.get("name", "reel"))
@@ -477,9 +502,13 @@ def create_app(
 
         if not re.fullmatch(r"[0-9a-f]{32}", job_id or ""):
             raise HTTPException(status_code=404, detail="unknown job")
-        record = jobs.pop(job_id, None)
+        record = _record_for(job_id)
+        if record is None and (jobs_root / job_id).exists():
+            # Files without a finished render: still remove the job dir.
+            record = {"job_id": job_id}
         if record is None:
             raise HTTPException(status_code=404, detail="unknown job")
+        jobs.pop(job_id, None)
         shutil.rmtree(jobs_root / job_id, ignore_errors=True)
         logger.info("Job %s deleted.", job_id)
         return {"deleted": job_id}
