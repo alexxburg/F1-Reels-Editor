@@ -28,7 +28,6 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   const form = event.target;
   const status = document.getElementById("status");
   const download = document.getElementById("download");
-  const downloadSrt = document.getElementById("download-srt");
   const submitButton = form.querySelector('button[type="submit"]');
   const setStatus = (text, state) => {
     status.textContent = text;
@@ -43,7 +42,6 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     submitButton.disabled = true;
   }
   download.hidden = true;
-  downloadSrt.hidden = true;
   const response = await fetch("/api/jobs", {
     method: "POST",
     body: new FormData(form),
@@ -74,8 +72,6 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       clearInterval(poll);
       download.href = `/api/jobs/${jobId}/download`;
       download.hidden = false;
-      downloadSrt.href = `/api/jobs/${jobId}/download?format=srt`;
-      downloadSrt.hidden = false;
       if (submitButton) {
         submitButton.disabled = false;
       }
@@ -219,13 +215,6 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       mp4.textContent = "mp4";
       name.appendChild(document.createTextNode(" "));
       name.appendChild(mp4);
-      if (reel.srt) {
-        name.appendChild(document.createTextNode(" "));
-        const srt = document.createElement("a");
-        srt.href = `/api/jobs/${reel.job_id}/download?format=srt`;
-        srt.textContent = "srt";
-        name.appendChild(srt);
-      }
       const size = document.createElement("span");
       size.className = "reel-size";
       size.textContent = formatSize(reel.size);

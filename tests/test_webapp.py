@@ -167,7 +167,8 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
     ):
         assert removed not in html, removed
     assert 'id="download"' in html
-    assert 'id="download-srt"' in html
+    assert 'id="download-srt"' not in html
+    assert ">Download</a>" in html
     assert "/api/jobs" in html
     # Speed is a slider (0.5x-2x) with a live readout.
     assert 'type="range"' in html
@@ -415,9 +416,9 @@ def test_desktop_chrome(tmp_path, monkeypatch):
         'id="random-seed"',
         'id="status"',
         'id="download"',
-        'id="download-srt"',
     ):
         assert did in html, did
+    assert 'id="download-srt"' not in html
     assert '<link rel="stylesheet" href="/static/style.css"' in html
     assert '<script src="/static/app.js"></script>' in html
     # Explorer window.
