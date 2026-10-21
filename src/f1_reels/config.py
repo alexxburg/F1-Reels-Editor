@@ -17,6 +17,7 @@ ALLOWED_CONFIG_KEYS: frozenset[str] = frozenset(
     {
         "openrouter_model",
         "openrouter_voice",
+        "voice_direction",
         "bricks_dir",
         "endcard_logo",
         "subtitle_font",
@@ -193,6 +194,11 @@ class Settings:
     openrouter_api_key: str = ""
     openrouter_tts_model: str = "google/gemini-3.8-flash-tts"
     openrouter_voice: str = "Puck"
+    voice_direction: str = (
+        "[Young British professional, mid-20s, contemporary Southern English accent, "
+        "medium pitch, slightly textured voice, intelligent, confident, approachable, "
+        "natural conversational pacing, subtle enthusiasm, authentic and unpolished.]"
+    )
     openrouter_response_format: str = "pcm"
     original_video_volume: float = 0.0
     generate_srt: bool = True
@@ -334,6 +340,11 @@ class Settings:
                 if "openrouter_voice" in mapping
                 else defaults.openrouter_voice
             ),
+            voice_direction=(
+                str(mapping["voice_direction"])
+                if "voice_direction" in mapping
+                else defaults.voice_direction
+            ),
             openrouter_response_format=defaults.openrouter_response_format,
             original_video_volume=defaults.original_video_volume,
             generate_srt=defaults.generate_srt,
@@ -400,6 +411,12 @@ class Settings:
                 "OPENROUTER_TTS_MODEL", "google/gemini-3.8-flash-tts"
             ),
             openrouter_voice=_get_str("OPENROUTER_VOICE", "Puck"),
+            voice_direction=_get_str(
+                "VOICE_DIRECTION",
+                "[Young British professional, mid-20s, contemporary Southern English accent, "
+                "medium pitch, slightly textured voice, intelligent, confident, approachable, "
+                "natural conversational pacing, subtle enthusiasm, authentic and unpolished.]",
+            ),
             openrouter_response_format=_get_str("OPENROUTER_RESPONSE_FORMAT", "pcm"),
             original_video_volume=_get_float("ORIGINAL_VIDEO_VOLUME", 0.0),
             generate_srt=_get_bool("GENERATE_SRT", True),

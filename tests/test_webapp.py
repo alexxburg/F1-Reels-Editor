@@ -76,7 +76,6 @@ def _post_fields(**overrides):
     fields = {
         "name": "TestReel",
         "script_lines": "Hello world\nSecond line",
-        "voice_direction": "",
         "speed": "1.05",
         "margin": "1.0",
         "punch": "on",
@@ -222,7 +221,6 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
     for kept in (
         'name="name"',
         'name="script_lines"',
-        'name="voice_direction"',
         'name="speed"',
         'name="punch"',
         'name="margin"',
@@ -234,6 +232,7 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
         'name="openrouter_key"',
         'name="openrouter_model"',
         'name="openrouter_voice"',
+        'name="voice_direction"',
         'name="endcard"',
         'name="bricks"',
         'name="logo"',
@@ -273,9 +272,11 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     assert "<legend>Voice</legend>" in html
     assert "<legend>Output</legend>" in html
     # Semantic labels wired to inputs.
-    for target in ("name", "script_lines", "voice_direction", "speed", "punch", "margin", "seed"):
+    for target in ("name", "script_lines", "speed", "punch", "margin", "seed"):
         assert f'<label for="{target}"' in html, target
         assert f'id="{target}"' in html, target
+    assert 'name="voice_direction"' not in html
+    assert 'id="voice_direction"' not in html
     # Status tray panel + single download action + app script.
     assert 'id="status"' in html
     assert 'id="download"' in html
@@ -480,13 +481,14 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     for kept in (
         'name="name"',
         'name="script_lines"',
-        'name="voice_direction"',
         'name="speed"',
         'name="punch"',
         'name="margin"',
         'name="seed"',
     ):
         assert kept in html, kept
+    assert 'name="voice_direction"' not in html
+    assert 'id="voice_direction"' not in html
     assert 'min="0.5"' in html
     assert 'max="2"' in html
     for did in (
@@ -634,6 +636,79 @@ def test_finished_job_reports_progress_100(tmp_path, monkeypatch):
     assert status["status"] == "done", status
     assert status["progress"] == 100
     assert status["stage"] == "finalize"
+
+
+def test_job_uses_configured_voice_direction(tmp_path, monkeypatch):
+    custom = "Custom direction XYZ"
+    app, webapp = _make_client(tmp_path, monkeypatch, config_extra={"voice_direction": custom})
+    assert app.state.settings.voice_direction == custom
+    captured: dict = {}
+
+    def fake_generate_voiceover(text, audio_path, **kwargs):
+        from f1_reels.alignment import Voiceover, WordTiming
+
+        captured["generate_instructions"] = kwargs.get("instructions")
+        words = [WordTiming(word=w, start=0.0, end=0.1) for w in text.split()]
+        return Voiceover(words=words, duration=0.5)
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        captured["edit_instructions"] = kwargs.get("instructions")
+        synthesize = kwargs.get("synthesize_speech")
+        if callable(synthesize):
+            synthesize("Hello world", Path(tmp_dir) / "voice.wav")
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.generate_voiceover = fake_generate_voiceover
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 200, r.text
+    job_id = r.json()["job_id"]
+    status = client.get(f"/api/jobs/{job_id}").json()
+    assert status["status"] == "done", status
+    assert captured.get("generate_instructions") == custom
+    assert captured.get("edit_instructions") == custom
+
+
+def test_job_uses_default_voice_direction(tmp_path, monkeypatch):
+    from f1_reels.config import Settings
+
+    app, webapp = _make_client(tmp_path, monkeypatch)
+    expected = Settings().voice_direction
+    captured: dict = {}
+
+    def fake_generate_voiceover(text, audio_path, **kwargs):
+        from f1_reels.alignment import Voiceover, WordTiming
+
+        captured["generate_instructions"] = kwargs.get("instructions")
+        words = [WordTiming(word=w, start=0.0, end=0.1) for w in text.split()]
+        return Voiceover(words=words, duration=0.5)
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        captured["edit_instructions"] = kwargs.get("instructions")
+        synthesize = kwargs.get("synthesize_speech")
+        if callable(synthesize):
+            synthesize("Hello world", Path(tmp_dir) / "voice.wav")
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.generate_voiceover = fake_generate_voiceover
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 200, r.text
+    job_id = r.json()["job_id"]
+    status = client.get(f"/api/jobs/{job_id}").json()
+    assert status["status"] == "done", status
+    assert captured.get("generate_instructions") == expected
+    assert captured.get("edit_instructions") == expected
 
 
 def test_progress_markup_and_assets(tmp_path, monkeypatch):

@@ -9,6 +9,12 @@ import pytest
 
 from f1_reels.config import Settings, _default_project_root
 
+DEFAULT_VOICE_DIRECTION = (
+    "[Young British professional, mid-20s, contemporary Southern English accent, "
+    "medium pitch, slightly textured voice, intelligent, confident, approachable, "
+    "natural conversational pacing, subtle enthusiasm, authentic and unpolished.]"
+)
+
 ENV_KEYS = (
     "PROJECT_ROOT",
     "VIDEOS_DIR",
@@ -34,6 +40,7 @@ ENV_KEYS = (
     "OPENROUTER_API_KEY",
     "OPENROUTER_TTS_MODEL",
     "OPENROUTER_VOICE",
+    "VOICE_DIRECTION",
     "OPENROUTER_RESPONSE_FORMAT",
     "ORIGINAL_VIDEO_VOLUME",
     "GENERATE_SRT",
@@ -93,6 +100,7 @@ def test_from_env_defaults(clean_env):
     assert settings.openrouter_api_key == ""
     assert settings.openrouter_tts_model == "google/gemini-3.8-flash-tts"
     assert settings.openrouter_voice == "Puck"
+    assert settings.voice_direction == DEFAULT_VOICE_DIRECTION
     assert settings.generate_srt is True
     assert settings.voice_speed == 1.05
     assert settings.reels_punch is True
@@ -109,6 +117,7 @@ def test_from_env_overrides(clean_env, monkeypatch):
     monkeypatch.setenv("VOICE_SPEED", "1.2")
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("OPENROUTER_VOICE", "Zephyr")
+    monkeypatch.setenv("VOICE_DIRECTION", "Custom direction")
     monkeypatch.setenv("THREADS", "8")
     monkeypatch.setenv("GENERATE_SRT", "0")
     settings = Settings.from_env()
@@ -118,8 +127,19 @@ def test_from_env_overrides(clean_env, monkeypatch):
     assert settings.voice_speed == 1.2
     assert settings.openrouter_api_key == "test-key"
     assert settings.openrouter_voice == "Zephyr"
+    assert settings.voice_direction == "Custom direction"
     assert settings.threads == 8
     assert settings.generate_srt is False
+
+
+def test_voice_direction_default_exact(clean_env):
+    assert Settings.from_env().voice_direction == DEFAULT_VOICE_DIRECTION
+    assert Settings().voice_direction == DEFAULT_VOICE_DIRECTION
+
+
+def test_voice_direction_env_override(clean_env, monkeypatch):
+    monkeypatch.setenv("VOICE_DIRECTION", "Urgent, whispered")
+    assert Settings.from_env().voice_direction == "Urgent, whispered"
 
 
 def test_bool_parsing_variants(clean_env, monkeypatch):

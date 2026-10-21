@@ -9,6 +9,12 @@ import pytest
 
 from f1_reels.config import Settings, _default_project_root, load_config_file
 
+DEFAULT_VOICE_DIRECTION = (
+    "[Young British professional, mid-20s, contemporary Southern English accent, "
+    "medium pitch, slightly textured voice, intelligent, confident, approachable, "
+    "natural conversational pacing, subtle enthusiasm, authentic and unpolished.]"
+)
+
 
 def _write(path: Path, payload: dict) -> Path:
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -63,8 +69,18 @@ def test_from_config_defaults_match_settings():
     defaults = Settings()
     assert settings.openrouter_tts_model == defaults.openrouter_tts_model == "google/gemini-3.8-flash-tts"
     assert settings.openrouter_voice == defaults.openrouter_voice == "Puck"
+    assert settings.voice_direction == defaults.voice_direction == DEFAULT_VOICE_DIRECTION
     assert settings.endcard_enabled is True
     assert settings.endcard_duration_sec == defaults.endcard_duration_sec == 2.0
+
+
+def test_from_config_voice_direction_default():
+    assert Settings.from_config({}).voice_direction == DEFAULT_VOICE_DIRECTION
+
+
+def test_from_config_voice_direction_override():
+    settings = Settings.from_config({"voice_direction": "Urgent, whispered"})
+    assert settings.voice_direction == "Urgent, whispered"
 
 
 def test_from_config_overrides_rendering_choices():
@@ -72,6 +88,7 @@ def test_from_config_overrides_rendering_choices():
         {
             "openrouter_model": "google/gemini-2.5-flash-tts",
             "openrouter_voice": "Zephyr",
+            "voice_direction": "Urgent, whispered",
             "endcard_duration": 3.5,
             "endcard_logo_width_pct": 0.5,
             "endcard_black_fade": 0.9,
@@ -82,6 +99,7 @@ def test_from_config_overrides_rendering_choices():
     )
     assert settings.openrouter_tts_model == "google/gemini-2.5-flash-tts"
     assert settings.openrouter_voice == "Zephyr"
+    assert settings.voice_direction == "Urgent, whispered"
     assert settings.endcard_duration_sec == 3.5
     assert settings.endcard_logo_width_pct == 0.5
     assert settings.endcard_black_fade_sec == 0.9
@@ -146,4 +164,10 @@ def test_from_config_subtitle_font_absolute_preserved(tmp_path):
 def test_load_config_file_subtitle_font_accepted(tmp_path):
     cfg = tmp_path / "config.json"
     payload = {"subtitle_font": "Montserrat-ExtraBold.ttf"}
+    assert load_config_file(_write(cfg, payload)) == payload
+
+
+def test_load_config_file_voice_direction_accepted(tmp_path):
+    cfg = tmp_path / "config.json"
+    payload = {"voice_direction": "Urgent, whispered"}
     assert load_config_file(_write(cfg, payload)) == payload

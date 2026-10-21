@@ -198,7 +198,6 @@ def create_app(
         background_tasks: BackgroundTasks,
         name: str = Form(default=""),
         script_lines: str = Form(default=""),
-        voice_direction: str = Form(default=""),
         speed: str = Form(default=""),
         margin: float = Form(default=1.0),
         punch: str = Form(default="on"),
@@ -342,7 +341,7 @@ def create_app(
                         audio_path,
                         voice=settings.openrouter_voice,
                         model=settings.openrouter_tts_model,
-                        instructions=voice_direction or None,
+                        instructions=settings.voice_direction or None,
                         speed=parsed_speed,
                         subtitle_lead=settings.subtitle_lead_sec,
                         apply_punch=use_punch,
@@ -384,7 +383,7 @@ def create_app(
                     config=config,
                     synthesize_speech=synthesize,
                     subtitle_overlays=overlays,
-                    instructions=voice_direction,
+                    instructions=settings.voice_direction,
                     on_progress=on_progress,
                 )
                 mp4_path = outputs_dir / f"{reel_name}.mp4"

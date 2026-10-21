@@ -1,6 +1,7 @@
 {
   "openrouter_model": "google/gemini-3.8-flash-tts",
   "openrouter_voice": "Puck",
+  "voice_direction": "[Young British professional, mid-20s, contemporary Southern English accent, medium pitch, slightly textured voice, intelligent, confident, approachable, natural conversational pacing, subtle enthusiasm, authentic and unpolished.]",
   "bricks_dir": "bricks",
   "endcard_logo": "RC-Logo White Full - PNG.png",
   "subtitle_font": "Montserrat-ExtraBold.ttf",
