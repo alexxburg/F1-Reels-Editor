@@ -9,12 +9,20 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def _write_config(path: Path, *, bricks_dir: Path, logo: Path, extra: dict | None = None) -> Path:
+def _write_config(
+    path: Path,
+    *,
+    bricks_dir: Path,
+    logo: Path,
+    font: Path,
+    extra: dict | None = None,
+) -> Path:
     payload: dict = {
         "openrouter_model": "google/gemini-3.8-flash-tts",
         "openrouter_voice": "Puck",
         "bricks_dir": str(bricks_dir),
         "endcard_logo": str(logo),
+        "subtitle_font": str(font),
         "endcard_duration": 2.0,
         "endcard_logo_width_pct": 0.86,
         "endcard_black_fade": 1.2,
@@ -28,23 +36,34 @@ def _write_config(path: Path, *, bricks_dir: Path, logo: Path, extra: dict | Non
     return path
 
 
-def _make_server_dirs(tmp_path: Path) -> tuple[Path, Path]:
+def _make_server_dirs(tmp_path: Path) -> tuple[Path, Path, Path]:
     bricks = tmp_path / "server-bricks"
     bricks.mkdir(parents=True, exist_ok=True)
     (bricks / "brick1.mp4").write_bytes(b"fake-video-bytes")
     logo = tmp_path / "logo.png"
     logo.write_bytes(b"fake-png")
-    return bricks, logo
+    font = tmp_path / "font.ttf"
+    font.write_bytes(b"fake-font-bytes")
+    return bricks, logo, font
 
 
-def _make_client(tmp_path: Path, monkeypatch, *, bricks: Path | None = None, logo: Path | None = None, config_extra: dict | None = None):
+def _make_client(
+    tmp_path: Path,
+    monkeypatch,
+    *,
+    bricks: Path | None = None,
+    logo: Path | None = None,
+    font: Path | None = None,
+    config_extra: dict | None = None,
+):
     from f1_reels import webapp
 
-    server_bricks, server_logo = _make_server_dirs(tmp_path)
+    server_bricks, server_logo, server_font = _make_server_dirs(tmp_path)
     cfg = _write_config(
         tmp_path / "config.json",
         bricks_dir=bricks if bricks is not None else server_bricks,
         logo=logo if logo is not None else server_logo,
+        font=font if font is not None else server_font,
         extra=config_extra,
     )
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
@@ -69,8 +88,10 @@ def _post_fields(**overrides):
 
 def test_create_job_and_download_with_fakes(tmp_path, monkeypatch):
     app, webapp = _make_client(tmp_path, monkeypatch)
+    expected_font = Path(app.state.settings.subtitle_font)
 
     def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        assert Path(font_path) == expected_font
         config = kwargs.get("config")
         out_dir = Path(config.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -98,8 +119,13 @@ def test_create_job_and_download_with_fakes(tmp_path, monkeypatch):
 def test_missing_key_returns_400(tmp_path, monkeypatch):
     from f1_reels import webapp
 
-    server_bricks, server_logo = _make_server_dirs(tmp_path)
-    cfg = _write_config(tmp_path / "config.json", bricks_dir=server_bricks, logo=server_logo)
+    server_bricks, server_logo, server_font = _make_server_dirs(tmp_path)
+    cfg = _write_config(
+        tmp_path / "config.json",
+        bricks_dir=server_bricks,
+        logo=server_logo,
+        font=server_font,
+    )
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     app = webapp.create_app(tmp_path / "data", config_path=cfg)
     client = TestClient(app)
@@ -127,7 +153,6 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
         'name="punch"',
         'name="margin"',
         'name="seed"',
-        'name="font"',
     ):
         assert kept in html, kept
     # Removed inputs must be gone.
@@ -138,6 +163,7 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
         'name="endcard"',
         'name="bricks"',
         'name="logo"',
+        'name="font"',
     ):
         assert removed not in html, removed
     assert 'id="download"' in html
@@ -148,7 +174,7 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
 def test_secret_key_in_config_raises(tmp_path, monkeypatch):
     from f1_reels import webapp
 
-    server_bricks, server_logo = _make_server_dirs(tmp_path)
+    server_bricks, server_logo, _server_font = _make_server_dirs(tmp_path)
     cfg = tmp_path / "config.json"
     cfg.write_text(
         json.dumps(
@@ -191,6 +217,16 @@ def test_missing_logo_returns_400(tmp_path, monkeypatch):
     client = TestClient(app)
     r = client.post("/api/jobs", data=_post_fields())
     assert r.status_code == 400
+
+
+def test_missing_font_returns_400(tmp_path, monkeypatch):
+    app, _ = _make_client(
+        tmp_path, monkeypatch, font=tmp_path / "does-not-exist-font.ttf"
+    )
+    client = TestClient(app)
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 400
+    assert "subtitle font not found" in r.text.lower()
 
 
 def test_no_config_raises_runtime_error(tmp_path, monkeypatch):

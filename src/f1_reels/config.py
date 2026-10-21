@@ -19,6 +19,7 @@ ALLOWED_CONFIG_KEYS: frozenset[str] = frozenset(
         "openrouter_voice",
         "bricks_dir",
         "endcard_logo",
+        "subtitle_font",
         "endcard_duration",
         "endcard_logo_width_pct",
         "endcard_black_fade",
@@ -185,6 +186,10 @@ class Settings:
     endcard_logo_fade_sec: float = 1.0
     endcard_fade_out_sec: float = 0.6
 
+    subtitle_font: Path = field(
+        default_factory=lambda: _default_project_root() / "Montserrat-ExtraBold.ttf"
+    )
+
     openrouter_api_key: str = ""
     openrouter_tts_model: str = "google/gemini-3.8-flash-tts"
     openrouter_voice: str = "Puck"
@@ -223,8 +228,9 @@ class Settings:
 
         Only the supported ``ALLOWED_CONFIG_KEYS`` may appear; anything
         else (including secret keys such as ``openrouter_api_key`` in any
-        casing) raises :class:`ValueError`. Relative ``bricks_dir`` and
-        ``endcard_logo`` values resolve against the project root.
+        casing) raises :class:`ValueError`. Relative ``bricks_dir``,
+        ``endcard_logo``, and ``subtitle_font`` values resolve against
+        the project root.
         ``endcard_enabled`` is left at its default (always on for the
         webapp; the CLI keeps using its own flag handling).
 
@@ -309,6 +315,11 @@ class Settings:
                 if "endcard_fade_out" in mapping
                 else defaults.endcard_fade_out_sec
             ),
+            subtitle_font=(
+                _resolve(mapping["subtitle_font"], defaults.subtitle_font)
+                if "subtitle_font" in mapping
+                else defaults.subtitle_font
+            ),
             openrouter_api_key=defaults.openrouter_api_key,
             openrouter_tts_model=(
                 str(mapping["openrouter_model"])
@@ -378,6 +389,9 @@ class Settings:
             endcard_logo_delay_sec=_get_float("ENDCARD_LOGO_DELAY_SEC", 0.3),
             endcard_logo_fade_sec=_get_float("ENDCARD_LOGO_FADE_SEC", 1.0),
             endcard_fade_out_sec=_get_float("ENDCARD_FADE_OUT_SEC", 0.6),
+            subtitle_font=_get_path(
+                "SUBTITLE_FONT", root / "Montserrat-ExtraBold.ttf"
+            ),
             openrouter_api_key=_get_str("OPENROUTER_API_KEY", ""),
             openrouter_tts_model=_get_str(
                 "OPENROUTER_TTS_MODEL", "google/gemini-3.8-flash-tts"

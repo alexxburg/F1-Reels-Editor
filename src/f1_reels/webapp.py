@@ -18,12 +18,12 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, UploadFile
+from fastapi import BackgroundTasks, FastAPI, Form
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .alignment import generate_voiceover as _generate_voiceover_impl
-from .config import Settings, _default_project_root, find_first_font, load_config_file
+from .config import Settings, _default_project_root, load_config_file
 from .endcard import EndcardConfig
 from .pipeline import PipelineConfig
 from .pipeline import edit_video as _edit_video_impl
@@ -174,7 +174,6 @@ def create_app(
         margin: float = Form(default=1.0),
         punch: str = Form(default="on"),
         seed: str = Form(default=""),
-        font: UploadFile | None = File(default=None),
     ) -> dict[str, str]:
         lines = [line.strip() for line in script_lines.splitlines() if line.strip()]
         if not lines:
@@ -215,6 +214,14 @@ def create_app(
                 status_code=400,
                 detail=f"endcard logo not found: {logo_path}",
             )
+        font_path = settings.subtitle_font
+        if not font_path.is_file():
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"subtitle font not found: {font_path}",
+            )
 
         job_id = uuid.uuid4().hex
         job_dir = jobs_root / job_id
@@ -227,10 +234,6 @@ def create_app(
 
         for source in available:
             shutil.copy2(source, bricks_dir / source.name)
-        font_upload_path: Path | None = None
-        if font is not None and font.filename:
-            font_upload_path = job_dir / Path(font.filename).name
-            font_upload_path.write_bytes(await font.read())
 
         reel_name = _sanitize_name(name)
         use_punch = _parse_bool(punch, True)
@@ -254,12 +257,7 @@ def create_app(
             record["status"] = "running"
             record["message"] = "rendering"
             try:
-                try:
-                    detected_font = font_upload_path or find_first_font(
-                        settings.montserrat_fonts
-                    )
-                except FileNotFoundError:
-                    detected_font = None
+                detected_font = font_path
                 style = SubtitleStyle(
                     y_pct=settings.subtitle_y_pct,
                     font_size_pct=settings.subtitle_font_size_pct,
@@ -289,8 +287,8 @@ def create_app(
                             clips.extend(built)
                     return clips
 
-                overlays = subtitle_overlays if detected_font is not None else None
-                font_arg = detected_font if detected_font is not None else ""
+                overlays = subtitle_overlays
+                font_arg = detected_font
 
                 def synthesize(text: str, audio_path: Path):
                     voiceover = generate_voiceover(

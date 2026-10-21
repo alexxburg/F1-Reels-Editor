@@ -110,3 +110,29 @@ def test_from_config_absolute_path_preserved(tmp_path):
     )
     assert settings.bricks_dir == bricks
     assert settings.endcard_logo == logo
+
+
+def test_from_config_subtitle_font_default():
+    root = _default_project_root()
+    settings = Settings.from_config({})
+    assert settings.subtitle_font == root / "Montserrat-ExtraBold.ttf"
+    assert settings.subtitle_font.is_absolute()
+
+
+def test_from_config_subtitle_font_relative_resolution():
+    root = _default_project_root()
+    settings = Settings.from_config({"subtitle_font": "my-font.ttf"})
+    assert settings.subtitle_font == root / "my-font.ttf"
+    assert settings.subtitle_font.is_absolute()
+
+
+def test_from_config_subtitle_font_absolute_preserved(tmp_path):
+    font = tmp_path / "custom.ttf"
+    settings = Settings.from_config({"subtitle_font": str(font)})
+    assert settings.subtitle_font == font
+
+
+def test_load_config_file_subtitle_font_accepted(tmp_path):
+    cfg = tmp_path / "config.json"
+    payload = {"subtitle_font": "Montserrat-ExtraBold.ttf"}
+    assert load_config_file(_write(cfg, payload)) == payload

@@ -59,9 +59,9 @@ Open `http://<lan-ip>:8081` from any device on your LAN
 (use `http://localhost:8081` on the host).
 
 1. Fill the form: reel name, script lines, voice direction, speed,
-   margin, seed, and an optional subtitle font. (The API key comes
-   only from `.env`; bricks, voice/model, and the endcard logo come
-   only from `config.json`.)
+   margin, and seed. (The API key comes only from `.env`; bricks,
+   voice/model, the endcard logo, and the subtitle font come only
+   from `config.json`.)
 2. Submit to queue the render; the page polls job status.
 3. Download `<name>.mp4` and `<name>.srt` when done.
 
