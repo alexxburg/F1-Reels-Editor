@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.111",
     "uvicorn>=0.30",
+    "python-multipart>=0.0.9",
     "moviepy==1.0.3",
     "imageio-ffmpeg",
     "numpy",
@@ -27,6 +28,9 @@ f1-reels = "f1_reels.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+f1_reels = ["templates/*.html", "static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -88,16 +88,20 @@ def create_app(data_root: Path | None = None) -> FastAPI:
     """Build the FastAPI application.
 
     Args:
-        data_root: Base directory for job data. Defaults to
-            ``<project-root>/data``. Each job lives under
-            ``data_root/jobs/{uuid}/`` with ``bricks/`` and ``outputs/``.
+        data_root: Base directory for job data. Defaults to ``$DATA_ROOT``
+            or ``<cwd>/data`` (``/app/data`` in the container). Each job
+            lives under ``data_root/jobs/{uuid}/`` with ``bricks/`` and
+            ``outputs/``.
 
     Returns:
         Configured FastAPI application with in-memory job tracking.
     """
     if data_root is None:
-        root = Path(__file__).resolve().parents[2]
-        resolved_root: Path = root / "data"
+        env_root = os.getenv("DATA_ROOT", "").strip()
+        if env_root:
+            resolved_root = Path(env_root).expanduser()
+        else:
+            resolved_root = Path.cwd() / "data"
     else:
         resolved_root = Path(data_root)
     jobs_root = resolved_root / "jobs"
