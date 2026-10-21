@@ -45,6 +45,24 @@ f1-reels postprocess-bricks --input "Video Bricks" --output "Post Processed Vide
 Crops the watermark band and trims leading seconds per take.
 Use `--overwrite` to re-encode existing outputs, `--dry-run` to preview.
 
+### Docker LAN webapp
+
+Requires Docker 29+ with Compose v5.
+
+```bash
+docker compose up --build
+```
+
+Open `http://<lan-ip>:8001` from any device on your LAN
+(use `http://localhost:8001` on the host).
+
+1. Fill the form: reel name, script lines, `OPENROUTER_API_KEY`
+   (or set it in `.env`), voice/model options, and upload brick videos.
+2. Submit to queue the render; the page polls job status.
+3. Download `<name>.mp4` and `<name>.srt` when done.
+
+Job data persists in `./data` (mounted as `/app/data`; override with `DATA_ROOT`).
+
 ## Tests
 
 ```bash

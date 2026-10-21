@@ -22,3 +22,10 @@ def test_web_deps_declared():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
     assert "fastapi" in pyproject
     assert "uvicorn" in pyproject
+
+
+def test_readme_documents_lan_webapp():
+    readme = Path("README.md").read_text(encoding="utf-8")
+    assert "docker compose up --build" in readme
+    assert "8001" in readme
+    assert "OPENROUTER_API_KEY" in readme
