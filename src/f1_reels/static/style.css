@@ -536,6 +536,55 @@ output:focus-visible {
   font-size: 0.85rem;
 }
 
+/* XP desktop icons: transparent launchers, top-left column. */
+#desktop-icons {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+}
+
+.desk-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 92px;
+  padding: 8px 4px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: Tahoma, Verdana, "Segoe UI", Geneva, sans-serif;
+  font-size: 0.75rem;
+}
+
+.desk-icon svg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.desk-icon span {
+  color: #fff;
+  font-family: Tahoma, Verdana, "Segoe UI", Geneva, sans-serif;
+  text-align: center;
+  line-height: 1.2;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.desk-icon:focus-visible {
+  outline: 1px dotted #fff;
+  outline-offset: 2px;
+}
+
+.desk-icon[aria-pressed="true"] {
+  background: rgba(0, 88, 230, 0.35);
+  border: 1px dotted #fff;
+}
+
 @media (max-width: 720px) {
   .page { flex-direction: column; }
 }

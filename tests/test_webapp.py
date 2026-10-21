@@ -446,3 +446,19 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "#tray-clock" in css
     assert "#start-menu" in css
     assert "#reel-list" in css or ".reel-list" in css
+    # Desktop icons: top-left launchers wired to the existing windows.
+    assert 'id="desktop-icons"' in html
+    assert html.count('class="desk-icon"') >= 2
+    assert 'data-win="win-generator"' in html
+    assert 'data-win="win-explorer"' in html
+    assert "<svg" in html
+    assert "Reel Generator" in html
+    assert "My Reels" in html
+    # Single-visible contract: exactly one window visible, generator first.
+    assert 'id="win-generator"' in html
+    assert 'id="win-explorer" hidden' in html or 'id="win-explorer"\n' in html
+    assert "showWindow" in js
+    assert "hidden = " in js
+    # Desktop icon styling hooks (transparent XP labels, 40px glyphs).
+    assert ".desk-icon" in css
+    assert "#desktop-icons" in css

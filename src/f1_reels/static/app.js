@@ -173,8 +173,15 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   const taskButtons = Array.from(
     document.querySelectorAll('#task-buttons [data-win]')
   );
+  const deskIcons = Array.from(
+    document.querySelectorAll('#desktop-icons [data-win]')
+  );
   function syncPressed() {
     taskButtons.forEach((btn) => {
+      const win = document.getElementById(btn.getAttribute("data-win"));
+      btn.setAttribute("aria-pressed", String(!!win && !win.hidden));
+    });
+    deskIcons.forEach((btn) => {
       const win = document.getElementById(btn.getAttribute("data-win"));
       btn.setAttribute("aria-pressed", String(!!win && !win.hidden));
     });
@@ -245,18 +252,30 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     refresh.addEventListener("click", loadReels);
   }
 
-  document.querySelectorAll("[data-win]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const win = document.getElementById(btn.getAttribute("data-win"));
-      if (!win) {
+  // Single visible app window at full size: show the target, hide the other.
+  function showWindow(id) {
+    const target = document.getElementById(id);
+    if (!target) {
+      return;
+    }
+    ["win-generator", "win-explorer"].forEach((wid) => {
+      const w = document.getElementById(wid);
+      if (!w) {
         return;
       }
-      win.hidden = !win.hidden;
-      syncPressed();
-      if (!win.hidden && win.id === "win-explorer") {
-        loadReels();
-      }
-      closeMenu();
+      w.hidden = wid !== id;
+    });
+    syncPressed();
+    if (id === "win-explorer") {
+      loadReels();
+    }
+    closeMenu();
+  }
+
+  document.querySelectorAll("[data-win]").forEach((btn) => {
+    // Desktop icons open on single click — simpler than XP double-click.
+    btn.addEventListener("click", () => {
+      showWindow(btn.getAttribute("data-win"));
     });
   });
   syncPressed();
