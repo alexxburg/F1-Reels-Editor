@@ -219,17 +219,29 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     if (!reels.length) {
       const empty = document.createElement("div");
       empty.className = "reel-empty";
-      empty.textContent = "No reels yet — render one first.";
+      empty.setAttribute("role", "row");
+      empty.innerHTML =
+        '<svg class="reel-empty-art" width="48" height="48" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg><p class="reel-empty-title">No reels yet</p><p class="reel-empty-hint">No reels yet — render one first. Render one from Reel Generator.</p>';
       list.appendChild(empty);
       return;
     }
+    const filmIcon =
+      '<svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg>';
     reels.forEach((reel) => {
       const row = document.createElement("div");
       row.className = "reel-row";
       row.setAttribute("role", "row");
       const name = document.createElement("span");
       name.className = "reel-name";
-      name.textContent = reel.name;
+      const icon = document.createElement("span");
+      icon.className = "reel-file-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML = filmIcon;
+      name.appendChild(icon);
+      const label = document.createElement("span");
+      label.className = "reel-title";
+      label.textContent = reel.name;
+      name.appendChild(label);
       const dl = document.createElement("a");
       dl.className = "btn reel-download";
       dl.href = `/api/jobs/${reel.job_id}/download`;

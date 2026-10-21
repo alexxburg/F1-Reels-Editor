@@ -123,7 +123,14 @@ def test_explorer_row_has_download_reel_button(tmp_path, monkeypatch):
     client = TestClient(app)
     js = client.get("/static/app.js").text
     assert "Download reel" in js
+    assert "Delete" in js
     assert "reel-delete" in js or "delete" in js.lower()
+    # XP details view: each row renders a film-strip file-type icon (inline SVG).
+    assert "<svg" in js
+    assert "reel-file-icon" in js
+    # Friendlier empty state points at the Reel Generator (JS-rendered path).
+    assert "Reel Generator" in js
+    assert "No reels yet" in js
 
 
 def test_delete_job_removes_files_and_record(tmp_path, monkeypatch):
@@ -500,6 +507,14 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     for col in ("Name", "Size", "Modified"):
         assert col in html, col
     assert "No reels yet — render one first." in html
+    # XP details view: header columns carry a divider styling hook.
+    assert "reel-col" in html
+    # Friendlier empty state: watermark + title + Reel Generator hint.
+    assert "reel-empty" in html
+    assert "No reels yet" in html
+    assert "Reel Generator" in html
+    assert "reel-empty-title" in html
+    assert "reel-empty-hint" in html
     # Taskbar + start menu.
     assert 'id="taskbar"' in html
     assert 'id="start-btn"' in html
@@ -524,6 +539,14 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "#tray-clock" in css
     assert "#start-menu" in css
     assert "#reel-list" in css or ".reel-list" in css
+    # XP details-view styling hooks: header dividers, file icon,
+    # tabular-nums size column, red-tinted Delete hover.
+    assert "reel-col" in css
+    assert "reel-file-icon" in css
+    assert "reel-size" in css
+    assert "tabular-nums" in css
+    assert "reel-delete" in css
+    assert ".reel-row:hover" in css
     # App icons live in the taskbar buttons and start menu items
     # (no desktop icons).
     assert 'id="desktop-icons"' not in html
@@ -568,6 +591,9 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "menu-reel-count" in js
     assert "/api/reels" in js
     assert "showWindow" in js
+    # Explorer per-row contract: Download reel + Delete controls in JS.
+    assert "Download reel" in js
+    assert "Delete" in js
     assert "closeMenu" in js or "close-menu" in js.lower()
     assert "Escape" in js
     assert "aria-expanded" in js
