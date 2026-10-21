@@ -230,11 +230,31 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       const name = document.createElement("span");
       name.className = "reel-name";
       name.textContent = reel.name;
-      const mp4 = document.createElement("a");
-      mp4.href = `/api/jobs/${reel.job_id}/download`;
-      mp4.textContent = "mp4";
+      const dl = document.createElement("a");
+      dl.className = "btn reel-download";
+      dl.href = `/api/jobs/${reel.job_id}/download`;
+      dl.textContent = "Download reel";
       name.appendChild(document.createTextNode(" "));
-      name.appendChild(mp4);
+      name.appendChild(dl);
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn reel-delete";
+      del.textContent = "Delete";
+      del.setAttribute("aria-label", `Delete ${reel.name}`);
+      del.addEventListener("click", async () => {
+        if (!window.confirm(`Delete reel "${reel.name}"?`)) {
+          return;
+        }
+        del.disabled = true;
+        const res = await fetch(`/api/jobs/${reel.job_id}`, { method: "DELETE" });
+        if (!res.ok) {
+          del.disabled = false;
+          return;
+        }
+        loadReels();
+      });
+      name.appendChild(document.createTextNode(" "));
+      name.appendChild(del);
       const size = document.createElement("span");
       size.className = "reel-size";
       size.textContent = formatSize(reel.size);

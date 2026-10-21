@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 import os
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -469,6 +470,19 @@ def create_app(
         return FileResponse(
             str(mp4_path), media_type="video/mp4", filename=mp4_path.name
         )
+
+    @app.delete("/api/jobs/{job_id}")
+    def job_delete(job_id: str) -> dict[str, str]:
+        from fastapi import HTTPException
+
+        if not re.fullmatch(r"[0-9a-f]{32}", job_id or ""):
+            raise HTTPException(status_code=404, detail="unknown job")
+        record = jobs.pop(job_id, None)
+        if record is None:
+            raise HTTPException(status_code=404, detail="unknown job")
+        shutil.rmtree(jobs_root / job_id, ignore_errors=True)
+        logger.info("Job %s deleted.", job_id)
+        return {"deleted": job_id}
 
     return app
 

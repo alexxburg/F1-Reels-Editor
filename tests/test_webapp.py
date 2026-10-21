@@ -116,6 +116,44 @@ def test_create_job_and_download_with_fakes(tmp_path, monkeypatch):
     assert "Hello" in srt.text
 
 
+def test_explorer_row_has_download_reel_button(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    js = client.get("/static/app.js").text
+    assert "Download reel" in js
+    assert "reel-delete" in js or "delete" in js.lower()
+
+
+def test_delete_job_removes_files_and_record(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    job_id = client.post("/api/jobs", data=_post_fields()).json()["job_id"]
+    assert client.get(f"/api/jobs/{job_id}").json()["status"] == "done"
+    mp4 = tmp_path / "data" / "jobs" / job_id / "outputs" / "TestReel.mp4"
+    assert mp4.exists()
+    r = client.delete(f"/api/jobs/{job_id}")
+    assert r.status_code == 200, r.text
+    assert not mp4.exists()
+    assert client.get(f"/api/jobs/{job_id}").status_code == 404
+    assert client.get("/api/reels").json() == {"reels": []}
+    # Unknown / malformed ids must not touch the filesystem.
+    assert client.delete("/api/jobs/does-not-exist").status_code == 404
+    assert client.delete("/api/jobs/../config").status_code in (404, 422)
+
+
 def test_missing_key_returns_400(tmp_path, monkeypatch):
     from f1_reels import webapp
 
