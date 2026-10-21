@@ -2,9 +2,6 @@
 
 :root {
   --xp-desktop: #3a7bd5;
-  --xp-sky-horizon: #cfe8f7;
-  --xp-hill-dark: #3f7a2e;
-  --xp-hill-light: #66a34e;
   --xp-face: #ece9d8;
   --xp-face-light: #f5f4e8;
   --xp-title-start: #0058e6;
@@ -36,14 +33,10 @@ body {
   font-size: 14px;
   line-height: 1.4;
   background-color: var(--xp-desktop);
-  /* Bliss homage in pure CSS: clouds, sky gradient, rolling green hills. */
-  background-image:
-    radial-gradient(ellipse 90px 26px at 18% 16%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 70%),
-    radial-gradient(ellipse 130px 34px at 68% 10%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 70%),
-    radial-gradient(ellipse 70px 20px at 86% 24%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 70%),
-    radial-gradient(ellipse 120% 55% at 15% 118%, var(--xp-hill-light) 0%, var(--xp-hill-dark) 55%, rgba(63, 122, 46, 0) 72%),
-    radial-gradient(ellipse 110% 50% at 88% 122%, var(--xp-hill-dark) 0%, #2e5c22 60%, rgba(46, 92, 34, 0) 75%),
-    linear-gradient(to bottom, var(--xp-desktop) 0%, #7fb2e8 55%, var(--xp-sky-horizon) 72%);
+  /* Actual Bliss wallpaper, served locally (no external requests on LAN). */
+  background-image: url("/static/bliss.jpg");
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
   min-height: 100vh;
