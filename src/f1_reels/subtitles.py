@@ -1,10 +1,6 @@
 """Word-highlight subtitle rendering in Reels style.
 
-Faithful port of the subtitle pipeline from the legacy script
-(``agrupar_palabras_en_lineas`` / ``crear_subtitulo_linea`` /
-``_fmt_srt`` / ``escribir_srt``) with English names.
-
-Visual output is unchanged: inactive words render white, the spoken word
+Visual output: inactive words render white, the spoken word
 renders 10% larger in solid blue ``#01abfe`` with a soft drop shadow and no
 hard stroke. All tuning constants live in :class:`SubtitleStyle` (injected
 per call) instead of module globals. Paths use :class:`pathlib.Path` and
@@ -46,7 +42,7 @@ class SrtEntry:
 class SubtitleStyle:
     """All visual tuning constants for subtitle rendering.
 
-    Defaults reproduce the legacy look exactly: white base text, ``#01abfe``
+    Defaults reproduce the established look exactly: white base text, ``#01abfe``
     active word at +10% size, no hard stroke, soft drop shadow.
     """
 

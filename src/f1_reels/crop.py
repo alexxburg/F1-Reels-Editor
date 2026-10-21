@@ -1,16 +1,12 @@
 """Unified crop-window math for F1 watermark removal.
 
-This module merges the two previously duplicated implementations:
-
-- ``Editvideos.aplicar_crop`` (top 22% cut, moviepy path)
-- ``Postprocess_bricks.ventana_recorte`` (top 22% / bottom 18% cuts, ffmpeg path)
-
-into a single source of truth. Two deliberate unifications: the output width
-is always forced even (required for ``yuv420p`` ffmpeg output), matching the
-``Postprocess_bricks`` behavior, and the cut itself is forced even as well so
-the remaining height stays even for even-sized sources (also required for
-``yuv420p``). For 1080x1920 top-crop this changes the window width from 843
-to 842px, a sub-pixel-irrelevant one-pixel difference.
+Top band (top-left watermark) and bottom band (bottom-left watermark)
+share a single source of truth. Two deliberate unifications: the output width
+is always forced even (required for ``yuv420p`` ffmpeg output), and the cut
+itself is forced even as well so the remaining height stays even for
+even-sized sources (also required for ``yuv420p``). For 1080x1920 top-crop
+this changes the window width from 843 to 842px, a sub-pixel-irrelevant
+one-pixel difference.
 
 English only. No globals: cut ratios are module constants, everything else
 flows through function arguments.
@@ -142,7 +138,7 @@ def apply_crop_to_clip(clip, box: CropBox, rescale_to_original: bool = True):
 def apply_crop_top(clip, rescale_to_original: bool = True):
     """Remove the top watermark band from a moviepy clip (top 22% cut).
 
-    This is the moviepy-path equivalent of the old ``aplicar_crop`` helper:
+    This is the moviepy-path top-crop helper:
     it computes the "top" window via :func:`compute_crop_window` and applies
     it via :func:`apply_crop_to_clip`. For the ffmpeg path, use
     :func:`crop_ffmpeg_filter` with the same box instead.

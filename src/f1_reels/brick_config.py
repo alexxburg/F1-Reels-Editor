@@ -1,4 +1,4 @@
-"""Per-video logo/trim tables, ported from ``Postprocess_bricks.py``.
+"""Per-video logo/trim tables for the brick post-processing step.
 
 These tables drive the brick post-processing step:
 

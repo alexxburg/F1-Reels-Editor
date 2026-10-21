@@ -1,6 +1,5 @@
 """Closing end card: fade to black with the channel logo.
 
-Ports ``construir_endcard`` from the legacy ``Editvideos.py`` script.
 ``moviepy``/``numpy`` are imported lazily so this module stays importable
 without video dependencies installed.
 """

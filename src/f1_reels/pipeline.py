@@ -1,7 +1,5 @@
 """Single-video editing orchestrator with explicit arguments.
 
-Ports the ``editar_video`` flow from the legacy ``Editvideos.py`` script:
-
 1. synthesize the voice-over (one injected TTS call) to learn the duration;
 2. assemble a random B-roll track of ``voice + margin_final`` seconds;
 3. overlay subtitle clips built by an injected factory;
@@ -107,7 +105,7 @@ def edit_video(
             cropped (``bricks_already_cropped=False``).
         instructions: Voice-direction hint forwarded to providers that
             support it (ignored otherwise).
-        fallback_path: Legacy background video used only when B-roll
+        fallback_path: Fallback background video used only when B-roll
             assembly fails and the path exists.
     """
     _ = instructions  # documented for providers; consumed by the TTS hook
@@ -179,7 +177,7 @@ def edit_video(
             else:
                 video = crop_fn(broll_raw)
         except Exception as exc:
-            logger.warning("B-roll failed (%s), trying legacy fallback.", str(exc)[:200])
+            logger.warning("B-roll failed (%s), trying fallback.", str(exc)[:200])
             broll_raw = None
             if fallback_path is not None and Path(fallback_path).exists():
                 video_original = VideoFileClip(str(fallback_path))

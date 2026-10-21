@@ -20,7 +20,7 @@ Accepted header variants:
   or without the ``.mp4`` suffix.
 
 Compatibility: if the file contains no header at all it is treated as
-legacy single-video mode and returned as ``{"__SINGLE__": ...}``.
+single-video mode and returned as ``{"__SINGLE__": ...}``.
 
 Voice direction: lines wrapped in ``[...]`` are not narrated; they are
 stored on :attr:`ScriptBlock.voice_direction` (multiple such lines are
@@ -131,7 +131,7 @@ def parse_script_file(path: Path) -> dict[str, ScriptBlock]:
 
 
 def _parse_single_mode(lines: list[str]) -> dict[str, ScriptBlock]:
-    """Parse legacy mode where the whole file is one script."""
+    """Parse single-video mode where the whole file is one script."""
     script_lines: list[str] = []
     directions: list[str] = []
     for line in lines:

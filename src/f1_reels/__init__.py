@@ -1,7 +1,6 @@
 """Typed F1 reels editing pipeline.
 
-New code lives here; the legacy ``Editvideos.py`` / ``Postprocess_bricks.py``
-/ ``Voices.py`` scripts are kept as-is for reference.
+Sole implementation lives here.
 """
 
 from .alignment import generate_voiceover

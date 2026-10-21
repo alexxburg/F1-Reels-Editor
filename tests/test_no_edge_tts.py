@@ -7,6 +7,9 @@ import pytest
 
 SRC_ROOT = Path(__file__).resolve().parent.parent / "src" / "f1_reels"
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+README_PATH = REPO_ROOT / "README.md"
+
 BANNED_TOKENS = (
     "edge_tts",
     "EdgeTTS",
@@ -14,6 +17,12 @@ BANNED_TOKENS = (
     "TTS_BACKEND",
     "sample-voices",
     "sample_voices",
+)
+
+LEGACY_TOKENS = (
+    "import Editvideos",
+    "Editvideos.py",
+    "Postprocess_bricks",
 )
 
 
@@ -53,3 +62,17 @@ def test_cli_parser_has_no_sample_voices_or_backend_flag() -> None:
         opt for action in edit_parser._actions for opt in action.option_strings
     ]
     assert "--backend" not in option_strings
+
+
+def test_no_legacy_imports() -> None:
+    violations: list[str] = []
+    for path in _source_files():
+        text = path.read_text(encoding="utf-8")
+        for token in LEGACY_TOKENS:
+            if token in text:
+                violations.append(f"{path.name} still contains {token!r}")
+    readme_text = README_PATH.read_text(encoding="utf-8")
+    for token in LEGACY_TOKENS:
+        if token in readme_text:
+            violations.append(f"README.md still contains {token!r}")
+    assert not violations, "; ".join(violations)

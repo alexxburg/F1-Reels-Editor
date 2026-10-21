@@ -1,7 +1,6 @@
 """Random B-roll assembly from pre-processed brick clips.
 
-Ports the ``construir_broll`` flow from the legacy ``Editvideos.py`` script
-into an explicit, dependency-injected selector:
+Explicit, dependency-injected selector:
 
 * no module-level globals -- all tuning lives in :class:`BrollConfig`;
 * :mod:`pathlib` paths and :mod:`logging` output instead of ``print``;

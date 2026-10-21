@@ -1,6 +1,6 @@
 """Application settings loaded from environment variables.
 
-Every field has a typed default matching the legacy script constants.
+Every field has a typed default.
 Use :meth:`Settings.from_env` to build an instance; paths default to
 locations relative to the project root.
 """
