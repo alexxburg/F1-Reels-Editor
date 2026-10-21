@@ -39,14 +39,24 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
-  min-height: 100vh;
+  /* Viewport-locked XP desktop: the window never moves, only its body scrolls. */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
 }
 
 .page {
   max-width: var(--max-width);
   width: 100%;
+  height: 100%;
   margin: 0 auto;
-  padding: 1.5rem 0.75rem 2.5rem;
+  padding: 0 0.75rem;
+  display: flex;
+  min-height: 0;
 }
 
 /* App window: square pixel-crisp frame, blue edge like an XP window. */
@@ -56,6 +66,11 @@ body {
   background: var(--xp-title-start);
   padding: 0 3px 3px;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
 }
 
 /* Glossy blue gradient title bar. */
@@ -107,6 +122,8 @@ body {
   background: var(--xp-face);
   border-radius: 0;
   padding: 1rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .site-header { margin-bottom: 0.75rem; }

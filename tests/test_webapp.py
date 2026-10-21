@@ -212,6 +212,9 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     css = client.get("/static/style.css")
     assert css.status_code == 200, css.text[:200]
     assert "text/css" in css.headers["content-type"]
+    # Window stays put: page never scrolls, only the window body does.
+    assert "overflow: hidden" in css.text
+    assert "overflow-y: auto" in css.text
     # XP Luna tokens (and the old pit-wall tokens must be gone).
     assert "--xp-desktop" in css.text
     # Speed slider: webkit thumb, dynamic fill var, Firefox progress parity.
