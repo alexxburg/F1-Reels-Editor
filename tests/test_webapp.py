@@ -181,6 +181,35 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
     assert 'type="button"' in html
 
 
+def test_index_polished_structure(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    html = client.get("/").text
+    # Stylesheet link for the pit-wall theme.
+    assert '<link rel="stylesheet" href="/static/style.css"' in html
+    # Card-based form with grouped sections.
+    assert html.count("<fieldset") >= 3
+    assert html.count("<legend") >= 3
+    assert "<legend>Reel</legend>" in html
+    assert "<legend>Voice</legend>" in html
+    assert "<legend>Output</legend>" in html
+    # Semantic labels wired to inputs.
+    for target in ("name", "script_lines", "voice_direction", "speed", "punch", "margin", "seed"):
+        assert f'<label for="{target}"' in html, target
+        assert f'id="{target}"' in html, target
+    # Status pill + download actions + app script.
+    assert 'id="status"' in html
+    assert 'id="download"' in html
+    assert 'id="download-srt"' in html
+    assert '<script src="/static/app.js"></script>' in html
+    # Polished CSS is served with the right content type.
+    css = client.get("/static/style.css")
+    assert css.status_code == 200, css.text[:200]
+    assert "text/css" in css.headers["content-type"]
+    assert "--f1-red" in css.text or "#e10600" in css.text.lower()
+    assert "@media (prefers-reduced-motion" in css.text
+
+
 def test_speed_out_of_range_returns_400(tmp_path, monkeypatch):
     app, _ = _make_client(tmp_path, monkeypatch)
     client = TestClient(app)

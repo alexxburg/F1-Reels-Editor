@@ -1,0 +1,271 @@
+/* F1 Reels — "pit wall at night" theme. System fonts + pure CSS only. */
+
+:root {
+  --f1-red: #e10600;
+  --f1-red-bright: #ff2b23;
+  --bg-0: #0a0b0d;
+  --bg-1: #121417;
+  --card: #17191d;
+  --card-border: #262a30;
+  --text: #f2f3f5;
+  --text-dim: #b9bec6;
+  --text-faint: #8a9099;
+  --amber: #f5a623;
+  --green: #2ecc71;
+  --error: #ff4d4d;
+  --focus: #7dd3fc;
+  --radius: 12px;
+  --max-width: 720px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  background-color: var(--bg-0);
+  /* Subtle carbon texture: layered repeating gradients over a radial vignette. */
+  background-image:
+    radial-gradient(1200px 500px at 50% -10%, rgba(225, 6, 0, 0.12), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.022) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.022) 0 2px, transparent 2px 6px),
+    linear-gradient(var(--bg-1), var(--bg-0));
+  min-height: 100vh;
+}
+
+.page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.site-header { margin-bottom: 1.25rem; }
+.site-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+  letter-spacing: 0.02em;
+}
+.site-header h1 .accent { color: var(--f1-red); }
+.tagline { margin: 0; color: var(--text-dim); }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.reel-form fieldset {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 1rem 1rem 1.1rem;
+  margin: 0 0 1rem;
+}
+.reel-form legend {
+  padding: 0 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.field { margin-bottom: 0.9rem; }
+.field:last-child { margin-bottom: 0; }
+.field > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
+input[type="text"],
+input:not([type]),
+textarea,
+input[type="number"] {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--bg-0);
+  color: var(--text);
+  font: inherit;
+}
+textarea { min-height: 6rem; resize: vertical; }
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.slider-row output {
+  min-width: 4ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* Custom-styled range slider with red thumb. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(var(--f1-red), var(--f1-red)) 0 / var(--fill, 35%) 100% no-repeat,
+    #2b2f36;
+  outline-offset: 4px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--f1-red);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.35);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--f1-red);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.35);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #2b2f36;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.check-row input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--f1-red);
+}
+.seed-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.seed-row input { flex: 1; }
+
+.btn {
+  display: inline-block;
+  font: inherit;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6rem 1.1rem;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+.btn-primary {
+  background: var(--f1-red);
+  color: #fff;
+  width: 100%;
+}
+.btn-primary:hover { background: var(--f1-red-bright); }
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--card-border);
+  white-space: nowrap;
+}
+.btn-secondary:hover { border-color: var(--text-faint); }
+
+/* Status pill, colored by data-state set from app.js. */
+.status {
+  display: inline-block;
+  margin: 1rem 0 0;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: #202329;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  min-height: 1.5em;
+}
+.status:empty { display: none; }
+.status[data-state="uploading"],
+.status[data-state="queued"],
+.status[data-state="running"] {
+  color: #111;
+  background: var(--amber);
+  border-color: var(--amber);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.status[data-state="done"] {
+  color: #06130c;
+  background: var(--green);
+  border-color: var(--green);
+}
+.status[data-state="error"] {
+  color: #fff;
+  background: var(--error);
+  border-color: var(--error);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Download actions as prominent buttons. */
+.downloads {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.downloads .btn {
+  flex: 1 1 200px;
+  background: var(--green);
+  color: #06130c;
+}
+.downloads .btn:hover { filter: brightness(1.08); }
+.downloads [hidden] { display: none !important; }
+
+/* Visible focus rings. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+output:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Single column is the default; keep it roomy on wide screens. */
+@media (min-width: 640px) {
+  .site-header h1 { font-size: 2.25rem; }
+  .card { padding: 1.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status[data-state="uploading"],
+  .status[data-state="queued"],
+  .status[data-state="running"] {
+    animation: none;
+  }
+  * { transition: none !important; }
+}

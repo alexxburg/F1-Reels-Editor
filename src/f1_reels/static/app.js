@@ -25,7 +25,19 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   const status = document.getElementById("status");
   const download = document.getElementById("download");
   const downloadSrt = document.getElementById("download-srt");
-  status.textContent = "uploading...";
+  const submitButton = form.querySelector('button[type="submit"]');
+  const setStatus = (text, state) => {
+    status.textContent = text;
+    if (state) {
+      status.dataset.state = state;
+    } else {
+      delete status.dataset.state;
+    }
+  };
+  setStatus("uploading...", "uploading");
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
   download.hidden = true;
   downloadSrt.hidden = true;
   const response = await fetch("/api/jobs", {
@@ -33,29 +45,41 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     body: new FormData(form),
   });
   if (!response.ok) {
-    status.textContent = "submit failed: " + (await response.text());
+    setStatus("submit failed: " + (await response.text()), "error");
+    if (submitButton) {
+      submitButton.disabled = false;
+    }
     return;
   }
   const payload = await response.json();
   const jobId = payload.job_id;
-  status.textContent = "queued: " + jobId;
+  setStatus("queued: " + jobId, "queued");
   const poll = setInterval(async () => {
     const res = await fetch(`/api/jobs/${jobId}`);
     if (!res.ok) {
-      status.textContent = "poll failed: " + res.status;
+      setStatus("poll failed: " + res.status, "error");
       clearInterval(poll);
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
       return;
     }
     const job = await res.json();
-    status.textContent = `${job.status}: ${job.message}`;
+    setStatus(`${job.status}: ${job.message}`, job.status);
     if (job.status === "done") {
       clearInterval(poll);
       download.href = `/api/jobs/${jobId}/download`;
       download.hidden = false;
       downloadSrt.href = `/api/jobs/${jobId}/download?format=srt`;
       downloadSrt.hidden = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
     } else if (job.status === "error") {
       clearInterval(poll);
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
     }
   }, 1000);
 });
