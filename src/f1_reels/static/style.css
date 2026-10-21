@@ -181,7 +181,9 @@ textarea { min-height: 6rem; resize: vertical; }
   gap: 0.6rem;
 }
 .slider-row output {
-  min-width: 4ch;
+  display: inline-block;
+  min-width: 5.5ch;
+  text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--xp-text);
   border: 2px inset #d4d0c8;
