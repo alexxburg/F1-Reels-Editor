@@ -506,7 +506,8 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert 'id="reel-list"' in html
     for col in ("Name", "Size", "Modified"):
         assert col in html, col
-    assert "No reels yet — render one first." in html
+    assert "No reels yet" in html
+    assert "Render one from Reel Generator." in html
     # XP details view: header columns carry a divider styling hook.
     assert "reel-col" in html
     # Friendlier empty state: watermark + title + Reel Generator hint.
