@@ -6,6 +6,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./config.json:/app/config.json:ro
+      - ./bricks:/app/bricks:ro
     env_file:
       - path: .env
         required: false

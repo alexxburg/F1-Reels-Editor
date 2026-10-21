@@ -102,6 +102,17 @@ def test_from_config_relative_path_resolution():
     assert settings.endcard_logo.is_absolute()
 
 
+def test_from_config_relative_paths_resolve_against_cwd(tmp_path, monkeypatch):
+    """Relative paths resolve against the working directory (repo root
+    locally, /app in the container) — not the installed package location."""
+    monkeypatch.chdir(tmp_path)
+    settings = Settings.from_config(
+        {"bricks_dir": "bricks", "endcard_logo": "logo.png"}
+    )
+    assert settings.bricks_dir == tmp_path / "bricks"
+    assert settings.endcard_logo == tmp_path / "logo.png"
+
+
 def test_from_config_absolute_path_preserved(tmp_path):
     bricks = tmp_path / "bricks"
     logo = tmp_path / "logo.png"

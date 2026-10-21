@@ -76,7 +76,7 @@ def test_from_env_defaults(clean_env):
     root = _default_project_root()
     assert settings.project_root == root
     assert settings.videos_dir == root / "Videos"
-    assert settings.bricks_dir == root / "Post Processed Videos"
+    assert settings.bricks_dir == root / "bricks"
     assert settings.output_dir == root / "Videos_Editados"
     assert settings.script_file == root / "textos.txt"
     assert settings.video_input == ""

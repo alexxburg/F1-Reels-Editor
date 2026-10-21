@@ -1,7 +1,7 @@
 {
   "openrouter_model": "google/gemini-3.8-flash-tts",
   "openrouter_voice": "Puck",
-  "bricks_dir": "Post Processed Videos",
+  "bricks_dir": "bricks",
   "endcard_logo": "RC-Logo White Full - PNG.png",
   "subtitle_font": "Montserrat-ExtraBold.ttf",
   "endcard_duration": 2.0,

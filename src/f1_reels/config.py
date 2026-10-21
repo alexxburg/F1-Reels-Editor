@@ -158,7 +158,7 @@ class Settings:
     project_root: Path = field(default_factory=_default_project_root)
     videos_dir: Path = field(default_factory=lambda: _default_project_root() / "Videos")
     bricks_dir: Path = field(
-        default_factory=lambda: _default_project_root() / "Post Processed Videos"
+        default_factory=lambda: _default_project_root() / "bricks"
     )
     output_dir: Path = field(
         default_factory=lambda: _default_project_root() / "Videos_Editados"
@@ -230,7 +230,8 @@ class Settings:
         else (including secret keys such as ``openrouter_api_key`` in any
         casing) raises :class:`ValueError`. Relative ``bricks_dir``,
         ``endcard_logo``, and ``subtitle_font`` values resolve against
-        the project root.
+        the working directory (repo root locally, ``/app`` in the
+        container) — not the installed package location.
         ``endcard_enabled`` is left at its default (always on for the
         webapp; the CLI keeps using its own flag handling).
 
@@ -255,7 +256,9 @@ class Settings:
         def _resolve(value: str | Path, fallback: Path) -> Path:
             candidate = Path(value).expanduser()
             if not candidate.is_absolute():
-                candidate = root / candidate
+                # Relative to the working directory: repo root locally,
+                # /app in the container (installed package location differs).
+                candidate = Path.cwd() / candidate
             return candidate
 
         def _float(value: object) -> float:
@@ -368,7 +371,7 @@ class Settings:
         return cls(
             project_root=root,
             videos_dir=_get_path("VIDEOS_DIR", root / "Videos"),
-            bricks_dir=_get_path("BRICKS_DIR", root / "Post Processed Videos"),
+            bricks_dir=_get_path("BRICKS_DIR", root / "bricks"),
             output_dir=_get_path("OUTPUT_DIR", root / "Videos_Editados"),
             script_file=_get_path("SCRIPT_FILE", root / "textos.txt"),
             video_input=_get_str("VIDEO_INPUT", ""),
