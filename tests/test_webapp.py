@@ -460,8 +460,9 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert taskbar.count("<svg") >= 2, taskbar[:200]
     menu = html.split('id="start-menu"')[1].split("</div>")[0]
     assert menu.count("<svg") >= 2, menu[:200]
-    # Windows flag on the start button.
-    assert html.split('id="start-btn"')[1].split("</button>")[0].count("<svg") >= 1
+    # Windows flag image on the start button (bundled locally, user-supplied).
+    start_btn = html.split('id="start-btn"')[1].split("</button>")[0]
+    assert "start-xp.webp" in start_btn
     # Single-visible contract: exactly one window visible, generator first.
     assert 'id="win-generator"' in html
     assert 'id="win-explorer" hidden' in html or 'id="win-explorer"\n' in html

@@ -405,8 +405,9 @@ output:focus-visible {
   align-items: center;
   gap: 0.35rem;
 }
-#start-btn svg {
+#start-btn img {
   flex: none;
+  display: block;
 }
 
 #task-buttons {
