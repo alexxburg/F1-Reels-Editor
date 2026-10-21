@@ -151,7 +151,9 @@ def edit_video(
     try:
         # --- 1) Voice-over first: its duration sets the video target. ---
         full_text = " ".join(narratable)
-        audio_path = scratch / f"{name}_full.mp3"
+        # WAV: OpenRouter returns raw PCM wrapped as WAV, so request the
+        # real container upfront (an .mp3 request never materializes).
+        audio_path = scratch / f"{name}_full.wav"
         logger.info("TTS (openrouter, 1 call, %d blocks).", len(narratable))
         words, voice_dur = synthesize_speech(full_text, audio_path)
         if voice_dur <= 0 or not audio_path.exists():

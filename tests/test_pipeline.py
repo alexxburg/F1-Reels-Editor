@@ -68,6 +68,55 @@ def _install_moviepy_stub(monkeypatch):
     monkeypatch.setitem(sys.modules, "moviepy.editor", editor)
 
 
+def test_pipeline_requests_wav_audio_path(tmp_path, monkeypatch):
+    """Pipeline must request a .wav scratch file: OpenRouter returns raw
+    PCM wrapped as WAV, so an .mp3 request never materializes on disk
+    and the render wrongly aborts as 'TTS failed'."""
+    _install_moviepy_stub(monkeypatch)
+
+    seen: dict[str, str] = {}
+
+    def fake_synthesize(text: str, audio_path: Path):
+        seen["suffix"] = Path(audio_path).suffix
+        assert Path(audio_path).suffix == ".wav", Path(audio_path)
+        Path(audio_path).write_bytes(b"fake-wav-audio")
+        words = [(w, float(i), float(i + 1)) for i, w in enumerate(text.split())]
+        return words, float(len(words))
+
+    class _FakeVideo:
+        w = 1080
+        h = 1920
+        duration = 10.0
+        audio = None
+
+    class _FakeSelector:
+        def __init__(self, config):
+            self._config = config
+
+        def build_broll(self, target_dur, seed=None):
+            return _FakeVideo(), [], []
+
+    monkeypatch.setattr(pipeline, "BrollSelector", _FakeSelector)
+
+    config = PipelineConfig(
+        output_dir=tmp_path / "out",
+        bricks_dir=tmp_path / "bricks",
+        generate_srt=False,
+        endcard=EndcardConfig(active=False),
+    )
+    ok = pipeline.edit_video(
+        "reel1",
+        ["hello world"],
+        tmp_path / "font.ttf",
+        tmp_path / "tmp",
+        config=config,
+        synthesize_speech=fake_synthesize,
+        subtitle_overlays=None,
+    )
+    assert ok is True
+    assert seen["suffix"] == ".wav"
+
+
 def test_bracket_lines_do_not_shift_cursor(tmp_path, monkeypatch):
     """[direction] lines must not shift word stamps across narrated blocks."""
     _install_moviepy_stub(monkeypatch)
