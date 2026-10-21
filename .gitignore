@@ -16,6 +16,12 @@ __pycache__/
 .env
 .env.local
 
+# Runtime app config (rendering choices; copy from config.json.example)
+config.json
+
+# Job/render data
+data/
+
 # Ignorar archivos del sistema Mac
 .DS_Store
 

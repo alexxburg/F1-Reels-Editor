@@ -223,6 +223,7 @@ def generate_voiceover(
     audio_path: Path | str,
     *,
     voice: str | None = None,
+    model: str | None = None,
     instructions: str | None = None,
     speed: float = 1.0,
     subtitle_lead: float = 0.0,
@@ -236,6 +237,7 @@ def generate_voiceover(
         text: Script to narrate.
         audio_path: Destination audio file.
         voice: Voice override for OpenRouter.
+        model: TTS model id override (defaults to the OpenRouter default).
         instructions: Delivery direction (OpenRouter only).
         speed: Local ffmpeg speed factor (``1.0`` = unchanged).
         subtitle_lead: Seconds to shift every word earlier so the highlight
@@ -256,7 +258,10 @@ def generate_voiceover(
             logger.info("Reels punch: %s...", punched[:90])
         text = punched
     target = Path(audio_path)
-    tts = OpenRouterTTS()
+    tts_kwargs: dict[str, str] = {}
+    if model:
+        tts_kwargs["model"] = model
+    tts = OpenRouterTTS(**tts_kwargs)
     target = tts.synthesize(text, target, voice=voice, instructions=instructions)
     if speed != 1.0:
         accelerate_audio(target, speed)

@@ -1,31 +1,74 @@
-"""Webapp job API tests (Task 1, TDD)."""
+"""Webapp job API tests (new contract: secrets from env, rendering from config.json)."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
+
+
+def _write_config(path: Path, *, bricks_dir: Path, logo: Path, extra: dict | None = None) -> Path:
+    payload: dict = {
+        "openrouter_model": "google/gemini-3.8-flash-tts",
+        "openrouter_voice": "Puck",
+        "bricks_dir": str(bricks_dir),
+        "endcard_logo": str(logo),
+        "endcard_duration": 2.0,
+        "endcard_logo_width_pct": 0.86,
+        "endcard_black_fade": 1.2,
+        "endcard_logo_delay": 0.3,
+        "endcard_logo_fade": 1.0,
+        "endcard_fade_out": 0.6,
+    }
+    if extra:
+        payload.update(extra)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def _make_server_dirs(tmp_path: Path) -> tuple[Path, Path]:
+    bricks = tmp_path / "server-bricks"
+    bricks.mkdir(parents=True, exist_ok=True)
+    (bricks / "brick1.mp4").write_bytes(b"fake-video-bytes")
+    logo = tmp_path / "logo.png"
+    logo.write_bytes(b"fake-png")
+    return bricks, logo
+
+
+def _make_client(tmp_path: Path, monkeypatch, *, bricks: Path | None = None, logo: Path | None = None, config_extra: dict | None = None):
+    from f1_reels import webapp
+
+    server_bricks, server_logo = _make_server_dirs(tmp_path)
+    cfg = _write_config(
+        tmp_path / "config.json",
+        bricks_dir=bricks if bricks is not None else server_bricks,
+        logo=logo if logo is not None else server_logo,
+        extra=config_extra,
+    )
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.delenv("CONFIG_PATH", raising=False)
+    app = webapp.create_app(tmp_path / "data", config_path=cfg)
+    return app, webapp
 
 
 def _post_fields(**overrides):
     fields = {
         "name": "TestReel",
         "script_lines": "Hello world\nSecond line",
-        "voice": "Puck",
         "voice_direction": "",
-        "openrouter_key": "test-key",
-        "openrouter_model": "google/gemini-3.8-flash-tts",
-        "openrouter_voice": "Puck",
         "speed": "1.05",
         "margin": "1.0",
+        "punch": "on",
         "seed": "7",
     }
     fields.update(overrides)
     return fields
 
 
-def test_create_job_and_download_with_fakes(tmp_path):
-    from f1_reels import webapp
+def test_create_job_and_download_with_fakes(tmp_path, monkeypatch):
+    app, webapp = _make_client(tmp_path, monkeypatch)
 
     def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
         config = kwargs.get("config")
@@ -37,11 +80,9 @@ def test_create_job_and_download_with_fakes(tmp_path):
         )
         return True
 
-    app = webapp.create_app(tmp_path)
     webapp.edit_video = fake_edit_video
     client = TestClient(app)
-    files = [("bricks", ("brick1.mp4", b"fake-video-bytes", "video/mp4"))]
-    r = client.post("/api/jobs", data=_post_fields(), files=files)
+    r = client.post("/api/jobs", data=_post_fields())
     assert r.status_code == 200, r.text
     job_id = r.json()["job_id"]
     status = client.get(f"/api/jobs/{job_id}").json()
@@ -54,49 +95,110 @@ def test_create_job_and_download_with_fakes(tmp_path):
     assert "Hello" in srt.text
 
 
-def test_missing_key_returns_400(tmp_path):
+def test_missing_key_returns_400(tmp_path, monkeypatch):
     from f1_reels import webapp
 
-    app = webapp.create_app(tmp_path)
+    server_bricks, server_logo = _make_server_dirs(tmp_path)
+    cfg = _write_config(tmp_path / "config.json", bricks_dir=server_bricks, logo=server_logo)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    app = webapp.create_app(tmp_path / "data", config_path=cfg)
     client = TestClient(app)
-    files = [("bricks", ("brick1.mp4", b"fake-video-bytes", "video/mp4"))]
-    fields = _post_fields()
-    fields["openrouter_key"] = ""
-    r = client.post("/api/jobs", data=fields, files=files)
+    r = client.post("/api/jobs", data=_post_fields())
     assert r.status_code == 400
 
 
-def test_empty_script_returns_400(tmp_path):
-    from f1_reels import webapp
-
-    app = webapp.create_app(tmp_path)
+def test_empty_script_returns_400(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
     client = TestClient(app)
-    files = [("bricks", ("brick1.mp4", b"fake-video-bytes", "video/mp4"))]
-    r = client.post(
-        "/api/jobs", data=_post_fields(script_lines="   \n  "), files=files
-    )
+    r = client.post("/api/jobs", data=_post_fields(script_lines="   \n  "))
     assert r.status_code == 400
 
 
-def test_index_form_has_all_inputs_and_download_button(tmp_path):
-    from f1_reels import webapp
-
-    app = webapp.create_app(tmp_path)
+def test_index_form_new_contract(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
     client = TestClient(app)
     html = client.get("/").text
-    assert 'name="script_lines"' in html
-    assert 'name="openrouter_key"' in html
-    assert 'name="openrouter_model"' in html
-    assert 'name="openrouter_voice"' in html
-    assert 'name="name"' in html
-    assert 'name="voice_direction"' in html
-    assert 'name="speed"' in html
-    assert 'name="punch"' in html
-    assert 'name="margin"' in html
-    assert 'name="seed"' in html
-    assert 'name="endcard"' in html
-    assert 'name="bricks"' in html
-    assert 'name="logo"' in html
-    assert 'name="font"' in html
+    # Kept fields.
+    for kept in (
+        'name="name"',
+        'name="script_lines"',
+        'name="voice_direction"',
+        'name="speed"',
+        'name="punch"',
+        'name="margin"',
+        'name="seed"',
+        'name="font"',
+    ):
+        assert kept in html, kept
+    # Removed inputs must be gone.
+    for removed in (
+        'name="openrouter_key"',
+        'name="openrouter_model"',
+        'name="openrouter_voice"',
+        'name="endcard"',
+        'name="bricks"',
+        'name="logo"',
+    ):
+        assert removed not in html, removed
     assert 'id="download"' in html
+    assert 'id="download-srt"' in html
     assert "/api/jobs" in html
+
+
+def test_secret_key_in_config_raises(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    server_bricks, server_logo = _make_server_dirs(tmp_path)
+    cfg = tmp_path / "config.json"
+    cfg.write_text(
+        json.dumps(
+            {
+                "openrouter_model": "google/gemini-3.8-flash-tts",
+                "openrouter_api_key": "sk-should-not-be-here",
+                "bricks_dir": str(server_bricks),
+                "endcard_logo": str(server_logo),
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    with pytest.raises(ValueError):
+        webapp.create_app(tmp_path / "data", config_path=cfg)
+
+
+def test_missing_bricks_dir_returns_400(tmp_path, monkeypatch):
+    app, _ = _make_client(
+        tmp_path, monkeypatch, bricks=tmp_path / "does-not-exist-bricks"
+    )
+    client = TestClient(app)
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 400
+
+
+def test_empty_bricks_dir_returns_400(tmp_path, monkeypatch):
+    empty = tmp_path / "empty-bricks"
+    empty.mkdir(parents=True, exist_ok=True)
+    app, _ = _make_client(tmp_path, monkeypatch, bricks=empty)
+    client = TestClient(app)
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 400
+
+
+def test_missing_logo_returns_400(tmp_path, monkeypatch):
+    app, _ = _make_client(
+        tmp_path, monkeypatch, logo=tmp_path / "does-not-exist-logo.png"
+    )
+    client = TestClient(app)
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 400
+
+
+def test_no_config_raises_runtime_error(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    monkeypatch.delenv("CONFIG_PATH", raising=False)
+    monkeypatch.chdir(tmp_path)
+    # Isolate from the repo's own <project-root>/config.json.
+    monkeypatch.setattr(webapp, "_default_project_root", lambda: tmp_path / "noroot")
+    with pytest.raises(RuntimeError):
+        webapp.create_app(tmp_path / "data")

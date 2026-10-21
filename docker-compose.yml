@@ -5,6 +5,7 @@ services:
       - "8081:8081"
     volumes:
       - ./data:/app/data
+      - ./config.json:/app/config.json:ro
     env_file:
       - path: .env
         required: false

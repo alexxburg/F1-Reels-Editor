@@ -7,9 +7,63 @@ locations relative to the project root.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+ALLOWED_CONFIG_KEYS: frozenset[str] = frozenset(
+    {
+        "openrouter_model",
+        "openrouter_voice",
+        "bricks_dir",
+        "endcard_logo",
+        "endcard_duration",
+        "endcard_logo_width_pct",
+        "endcard_black_fade",
+        "endcard_logo_delay",
+        "endcard_logo_fade",
+        "endcard_fade_out",
+    }
+)
+
+_BANNED_CONFIG_KEY_LOWER = "openrouter_api_key"
+
+
+def load_config_file(path: Path | str) -> dict:
+    """Load rendering choices from a JSON config file.
+
+    Args:
+        path: Config file location.
+
+    Returns:
+        Parsed config mapping.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+        ValueError: On invalid JSON, a non-object payload, a banned
+            secret key (``openrouter_api_key`` in any casing), or any
+            unknown key.
+    """
+    candidate = Path(path).expanduser()
+    if not candidate.is_file():
+        raise FileNotFoundError(f"Config file not found: {candidate}")
+    try:
+        payload = json.loads(candidate.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {candidate}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Invalid config in {candidate}: expected a JSON object.")
+    for key in payload:
+        if str(key).lower() == _BANNED_CONFIG_KEY_LOWER:
+            raise ValueError(
+                f"Secret key {key!r} must come from the env file, not config.json."
+            )
+    unknown = [key for key in payload if key not in ALLOWED_CONFIG_KEYS]
+    if unknown:
+        raise ValueError(f"Unknown config keys: {sorted(unknown)}")
+    return dict(payload)
 
 
 def _default_project_root() -> Path:
@@ -162,6 +216,137 @@ class Settings:
 
     montserrat_fonts: tuple[str, ...] = ()
     threads: int = 4
+
+    @classmethod
+    def from_config(cls, mapping: dict) -> Settings:
+        """Build settings from a config-file mapping (no secrets).
+
+        Only the supported ``ALLOWED_CONFIG_KEYS`` may appear; anything
+        else (including secret keys such as ``openrouter_api_key`` in any
+        casing) raises :class:`ValueError`. Relative ``bricks_dir`` and
+        ``endcard_logo`` values resolve against the project root.
+        ``endcard_enabled`` is left at its default (always on for the
+        webapp; the CLI keeps using its own flag handling).
+
+        Args:
+            mapping: Parsed config mapping (e.g. from
+                :func:`load_config_file`).
+
+        Returns:
+            Settings with config overrides applied over the defaults.
+        """
+        for key in mapping:
+            if str(key).lower() == _BANNED_CONFIG_KEY_LOWER:
+                raise ValueError(
+                    f"Secret key {key!r} must come from the env file, not config.json."
+                )
+        unknown = [key for key in mapping if key not in ALLOWED_CONFIG_KEYS]
+        if unknown:
+            raise ValueError(f"Unknown config keys: {sorted(unknown)}")
+        defaults: Settings = cls()
+        root: Path = defaults.project_root
+
+        def _resolve(value: str | Path, fallback: Path) -> Path:
+            candidate = Path(value).expanduser()
+            if not candidate.is_absolute():
+                candidate = root / candidate
+            return candidate
+
+        def _float(value: object) -> float:
+            return float(value)  # type: ignore[arg-type]
+
+        return cls(
+            project_root=defaults.project_root,
+            videos_dir=defaults.videos_dir,
+            bricks_dir=(
+                _resolve(mapping["bricks_dir"], defaults.bricks_dir)
+                if "bricks_dir" in mapping
+                else defaults.bricks_dir
+            ),
+            output_dir=defaults.output_dir,
+            script_file=defaults.script_file,
+            video_input=defaults.video_input,
+            crop_top_pct=defaults.crop_top_pct,
+            crop_rescale_to_original=defaults.crop_rescale_to_original,
+            final_margin_sec=defaults.final_margin_sec,
+            brick_speed_min=defaults.brick_speed_min,
+            brick_speed_max=defaults.brick_speed_max,
+            brick_min_fragment_sec=defaults.brick_min_fragment_sec,
+            brick_extensions=defaults.brick_extensions,
+            endcard_enabled=defaults.endcard_enabled,
+            endcard_logo=(
+                _resolve(mapping["endcard_logo"], defaults.endcard_logo)
+                if "endcard_logo" in mapping
+                else defaults.endcard_logo
+            ),
+            endcard_duration_sec=(
+                _float(mapping["endcard_duration"])
+                if "endcard_duration" in mapping
+                else defaults.endcard_duration_sec
+            ),
+            endcard_logo_width_pct=(
+                _float(mapping["endcard_logo_width_pct"])
+                if "endcard_logo_width_pct" in mapping
+                else defaults.endcard_logo_width_pct
+            ),
+            endcard_black_fade_sec=(
+                _float(mapping["endcard_black_fade"])
+                if "endcard_black_fade" in mapping
+                else defaults.endcard_black_fade_sec
+            ),
+            endcard_logo_delay_sec=(
+                _float(mapping["endcard_logo_delay"])
+                if "endcard_logo_delay" in mapping
+                else defaults.endcard_logo_delay_sec
+            ),
+            endcard_logo_fade_sec=(
+                _float(mapping["endcard_logo_fade"])
+                if "endcard_logo_fade" in mapping
+                else defaults.endcard_logo_fade_sec
+            ),
+            endcard_fade_out_sec=(
+                _float(mapping["endcard_fade_out"])
+                if "endcard_fade_out" in mapping
+                else defaults.endcard_fade_out_sec
+            ),
+            openrouter_api_key=defaults.openrouter_api_key,
+            openrouter_tts_model=(
+                str(mapping["openrouter_model"])
+                if "openrouter_model" in mapping
+                else defaults.openrouter_tts_model
+            ),
+            openrouter_voice=(
+                str(mapping["openrouter_voice"])
+                if "openrouter_voice" in mapping
+                else defaults.openrouter_voice
+            ),
+            openrouter_response_format=defaults.openrouter_response_format,
+            original_video_volume=defaults.original_video_volume,
+            generate_srt=defaults.generate_srt,
+            voice_speed=defaults.voice_speed,
+            reels_punch=defaults.reels_punch,
+            subtitle_y_pct=defaults.subtitle_y_pct,
+            subtitle_font_size_pct=defaults.subtitle_font_size_pct,
+            subtitle_max_words_per_line=defaults.subtitle_max_words_per_line,
+            subtitle_active_scale=defaults.subtitle_active_scale,
+            subtitle_lead_sec=defaults.subtitle_lead_sec,
+            subtitle_base_color=defaults.subtitle_base_color,
+            subtitle_active_color=defaults.subtitle_active_color,
+            subtitle_use_gradient=defaults.subtitle_use_gradient,
+            subtitle_gradient_top=defaults.subtitle_gradient_top,
+            subtitle_gradient_bottom=defaults.subtitle_gradient_bottom,
+            subtitle_stroke_color=defaults.subtitle_stroke_color,
+            subtitle_stroke_width=defaults.subtitle_stroke_width,
+            subtitle_shadow_enabled=defaults.subtitle_shadow_enabled,
+            subtitle_shadow_color=defaults.subtitle_shadow_color,
+            subtitle_shadow_dx=defaults.subtitle_shadow_dx,
+            subtitle_shadow_dy=defaults.subtitle_shadow_dy,
+            subtitle_shadow_blur=defaults.subtitle_shadow_blur,
+            subtitle_max_width_pct=defaults.subtitle_max_width_pct,
+            subtitle_block_gap_sec=defaults.subtitle_block_gap_sec,
+            montserrat_fonts=defaults.montserrat_fonts,
+            threads=defaults.threads,
+        )
 
     @classmethod
     def from_env(cls) -> Settings:

@@ -50,18 +50,25 @@ Use `--overwrite` to re-encode existing outputs, `--dry-run` to preview.
 Requires Docker 29+ with Compose v5.
 
 ```bash
+cp config.json.example config.json
+cp .env.example .env   # then set OPENROUTER_API_KEY in .env
 docker compose up --build
 ```
 
 Open `http://<lan-ip>:8081` from any device on your LAN
 (use `http://localhost:8081` on the host).
 
-1. Fill the form: reel name, script lines, `OPENROUTER_API_KEY`
-   (or set it in `.env`), voice/model options, and upload brick videos.
+1. Fill the form: reel name, script lines, voice direction, speed,
+   margin, seed, and an optional subtitle font. (The API key comes
+   only from `.env`; bricks, voice/model, and the endcard logo come
+   only from `config.json`.)
 2. Submit to queue the render; the page polls job status.
 3. Download `<name>.mp4` and `<name>.srt` when done.
 
 Job data persists in `./data` (mounted as `/app/data`; override with `DATA_ROOT`).
+`./config.json` is mounted read-only as `/app/config.json`
+(override with `CONFIG_PATH`). Bricks are served from the configured
+`bricks_dir` on the server, not uploaded per job.
 
 ## Tests
 

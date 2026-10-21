@@ -1,16 +1,19 @@
 """FastAPI webapp for rendering reels in a single container.
 
-Job flow: ``POST /api/jobs`` saves uploaded bricks into
-``data_root/jobs/{uuid}/`` and renders in a background task via
-:func:`f1_reels.pipeline.edit_video` with the real OpenRouter
-:func:`f1_reels.alignment.generate_voiceover` adapter and subtitle
-factories from :mod:`f1_reels.subtitles`.
+Secrets come ONLY from the environment (``OPENROUTER_API_KEY``);
+rendering choices come ONLY from ``config.json`` (see
+``config.json.example``). Job flow: ``POST /api/jobs`` references bricks
+from the configured server bricks dir into ``data_root/jobs/{uuid}/`` and
+renders in a background task via :func:`f1_reels.pipeline.edit_video`
+with the real OpenRouter :func:`f1_reels.alignment.generate_voiceover`
+adapter and subtitle factories from :mod:`f1_reels.subtitles`.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import shutil
 import uuid
 from pathlib import Path
 from typing import Any
@@ -20,7 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .alignment import generate_voiceover as _generate_voiceover_impl
-from .config import Settings, find_first_font
+from .config import Settings, _default_project_root, find_first_font, load_config_file
 from .endcard import EndcardConfig
 from .pipeline import PipelineConfig
 from .pipeline import edit_video as _edit_video_impl
@@ -44,10 +47,10 @@ PLACEHOLDER_HTML = """<!doctype html>
 <form action="/api/jobs" method="post" enctype="multipart/form-data">
 <label>Reel name <input name="name" value=""></label><br>
 <label>Script lines <textarea name="script_lines"></textarea></label><br>
-<label>Bricks <input type="file" name="bricks" multiple></label><br>
 <button type="submit">Render</button>
 </form>
 <a id="download" href="#" hidden>Download</a>
+<a id="download-srt" href="#" hidden>Download srt</a>
 </body>
 </html>
 """
@@ -84,7 +87,36 @@ def _sanitize_name(name: str) -> str:
     return cleaned or "reel"
 
 
-def create_app(data_root: Path | None = None) -> FastAPI:
+def resolve_config_path(explicit: Path | str | None = None) -> Path:
+    """Return the config file path, first existing of the search order.
+
+    Order: explicit ``config_path`` arg, ``$CONFIG_PATH``, then
+    ``<project-root>/config.json``, then ``<cwd>/config.json``.
+
+    Raises:
+        RuntimeError: If no candidate exists.
+    """
+    candidates: list[Path] = []
+    if explicit is not None:
+        candidates.append(Path(explicit).expanduser())
+    env_path = os.getenv("CONFIG_PATH", "").strip()
+    if env_path:
+        candidates.append(Path(env_path).expanduser())
+    candidates.append(_default_project_root() / "config.json")
+    candidates.append(Path.cwd() / "config.json")
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise RuntimeError(
+        "Config file not found. Copy config.json.example to config.json "
+        "(or set CONFIG_PATH) and adjust the rendering choices. "
+        f"Searched: {', '.join(str(c) for c in candidates)}"
+    )
+
+
+def create_app(
+    data_root: Path | None = None, config_path: Path | str | None = None
+) -> FastAPI:
     """Build the FastAPI application.
 
     Args:
@@ -92,10 +124,19 @@ def create_app(data_root: Path | None = None) -> FastAPI:
             or ``<cwd>/data`` (``/app/data`` in the container). Each job
             lives under ``data_root/jobs/{uuid}/`` with ``bricks/`` and
             ``outputs/``.
+        config_path: Explicit config file. Defaults to the
+            :func:`resolve_config_path` search order
+            (``$CONFIG_PATH``, ``<project-root>/config.json``,
+            ``<cwd>/config.json``).
 
     Returns:
         Configured FastAPI application with in-memory job tracking.
+
+    Raises:
+        RuntimeError: If no config file exists.
+        ValueError: If the config file holds secrets or unknown keys.
     """
+    settings = Settings.from_config(load_config_file(resolve_config_path(config_path)))
     if data_root is None:
         env_root = os.getenv("DATA_ROOT", "").strip()
         if env_root:
@@ -111,6 +152,7 @@ def create_app(data_root: Path | None = None) -> FastAPI:
     jobs: dict[str, dict[str, Any]] = {}
     app.state.jobs = jobs
     app.state.data_root = resolved_root
+    app.state.settings = settings
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -128,19 +170,10 @@ def create_app(data_root: Path | None = None) -> FastAPI:
         name: str = Form(default=""),
         script_lines: str = Form(default=""),
         voice_direction: str = Form(default=""),
-        openrouter_key: str = Form(default=""),
-        openrouter_model: str = Form(
-            default="google/gemini-3.8-flash-tts"
-        ),
-        openrouter_voice: str = Form(default=""),
-        voice: str = Form(default=""),
         speed: float = Form(default=1.05),
         margin: float = Form(default=1.0),
         punch: str = Form(default="on"),
         seed: str = Form(default=""),
-        endcard: str = Form(default="on"),
-        bricks: list[UploadFile] = File(default=[]),
-        logo: UploadFile | None = File(default=None),
         font: UploadFile | None = File(default=None),
     ) -> dict[str, str]:
         lines = [line.strip() for line in script_lines.splitlines() if line.strip()]
@@ -148,16 +181,40 @@ def create_app(data_root: Path | None = None) -> FastAPI:
             from fastapi import HTTPException
 
             raise HTTPException(status_code=400, detail="empty script")
-        api_key = openrouter_key.strip() or os.getenv("OPENROUTER_API_KEY", "").strip()
+        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
         if not api_key:
             from fastapi import HTTPException
 
             raise HTTPException(status_code=400, detail="missing OpenRouter API key")
-        uploads = [b for b in (bricks or []) if b.filename]
-        if not uploads:
+        bricks_source = settings.bricks_dir
+        if not bricks_source.is_dir():
             from fastapi import HTTPException
 
-            raise HTTPException(status_code=400, detail="no bricks uploaded")
+            raise HTTPException(
+                status_code=400,
+                detail=f"bricks dir not found: {bricks_source}",
+            )
+        available = sorted(
+            p
+            for p in bricks_source.iterdir()
+            if p.is_file()
+            and p.suffix.lower() in {ext.lower() for ext in settings.brick_extensions}
+        )
+        if not available:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"no bricks available in {bricks_source}",
+            )
+        logo_path = settings.endcard_logo
+        if not logo_path.is_file():
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"endcard logo not found: {logo_path}",
+            )
 
         job_id = uuid.uuid4().hex
         job_dir = jobs_root / job_id
@@ -168,25 +225,15 @@ def create_app(data_root: Path | None = None) -> FastAPI:
         outputs_dir.mkdir(parents=True, exist_ok=True)
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
-        for upload in uploads:
-            dest = bricks_dir / Path(upload.filename or "brick.mp4").name
-            content = await upload.read()
-            dest.write_bytes(content)
-        logo_path: Path | None = None
-        if logo is not None and logo.filename:
-            logo_path = job_dir / Path(logo.filename).name
-            logo_path.write_bytes(await logo.read())
+        for source in available:
+            shutil.copy2(source, bricks_dir / source.name)
         font_upload_path: Path | None = None
         if font is not None and font.filename:
             font_upload_path = job_dir / Path(font.filename).name
             font_upload_path.write_bytes(await font.read())
 
         reel_name = _sanitize_name(name)
-        resolved_voice = (
-            openrouter_voice.strip() or voice.strip() or "Puck"
-        )
         use_punch = _parse_bool(punch, True)
-        use_endcard = _parse_bool(endcard, True)
         try:
             parsed_seed = _parse_seed(seed)
         except ValueError:
@@ -207,7 +254,6 @@ def create_app(data_root: Path | None = None) -> FastAPI:
             record["status"] = "running"
             record["message"] = "rendering"
             try:
-                settings = Settings.from_env()
                 try:
                     detected_font = font_upload_path or find_first_font(
                         settings.montserrat_fonts
@@ -247,11 +293,11 @@ def create_app(data_root: Path | None = None) -> FastAPI:
                 font_arg = detected_font if detected_font is not None else ""
 
                 def synthesize(text: str, audio_path: Path):
-                    os.environ["OPENROUTER_API_KEY"] = api_key
                     voiceover = generate_voiceover(
                         text,
                         audio_path,
-                        voice=resolved_voice,
+                        voice=settings.openrouter_voice,
+                        model=settings.openrouter_tts_model,
                         instructions=voice_direction or None,
                         speed=speed,
                         subtitle_lead=settings.subtitle_lead_sec,
@@ -276,8 +322,8 @@ def create_app(data_root: Path | None = None) -> FastAPI:
                     threads=settings.threads,
                     seed=parsed_seed,
                     endcard=EndcardConfig(
-                        logo_path=logo_path or settings.endcard_logo,
-                        active=settings.endcard_enabled and use_endcard,
+                        logo_path=logo_path,
+                        active=True,
                         duration=settings.endcard_duration_sec,
                         width_pct=settings.endcard_logo_width_pct,
                         fade_black=settings.endcard_black_fade_sec,

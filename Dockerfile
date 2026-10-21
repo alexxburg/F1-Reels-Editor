@@ -9,8 +9,10 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md config.json.example ./
 COPY src/ ./src/
+COPY "RC-Logo White Full - PNG.png" ./
+COPY Montserrat-ExtraBold.ttf ./
 
 RUN pip install --no-cache-dir .
 
