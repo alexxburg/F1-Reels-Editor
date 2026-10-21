@@ -206,6 +206,8 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     assert 'id="download"' in html
     assert 'id="download-srt"' in html
     assert '<script src="/static/app.js"></script>' in html
+    # Empty data-URI favicon silences /favicon.ico 404s on LAN.
+    assert '<link rel="icon" href="data:,"' in html
     # XP CSS is served with the right content type.
     css = client.get("/static/style.css")
     assert css.status_code == 200, css.text[:200]

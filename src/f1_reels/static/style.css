@@ -175,7 +175,9 @@ textarea { min-height: 6rem; resize: vertical; }
 }
 .slider-row output {
   display: inline-block;
-  min-width: 5.5ch;
+  /* 5ch of content + padding + inset border: all readouts ("0.5x".."2x")
+     share one box so sliding never shifts the layout. */
+  min-width: calc(5ch + 1rem);
   text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--xp-text);
