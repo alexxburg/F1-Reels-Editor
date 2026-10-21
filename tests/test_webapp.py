@@ -233,6 +233,8 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     assert "--f1-red" not in css.text
     assert "#e10600" not in css.text.lower()
     assert "@media (prefers-reduced-motion" in css.text
+    # Desktop windows top-align to content height (no stretched empty chrome).
+    assert "align-items: flex-start" in css.text
     # Actual Bliss wallpaper served locally and used as the page background.
     assert "/static/bliss.jpg" in css.text
     bliss = client.get("/static/bliss.jpg")
