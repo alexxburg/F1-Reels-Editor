@@ -80,6 +80,30 @@ def _parse_seed(raw: str | int | None) -> int | None:
     return int(text)
 
 
+def _parse_speed(raw: str | float | None) -> float:
+    if raw is None:
+        return 1.05
+    if isinstance(raw, float):
+        value = raw
+    elif isinstance(raw, int) and not isinstance(raw, bool):
+        value = float(raw)
+    else:
+        text = str(raw).strip()
+        if not text:
+            return 1.05
+        try:
+            value = float(text)
+        except (TypeError, ValueError):
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="invalid speed")
+    if not 0.5 <= value <= 2.0:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail="invalid speed")
+    return value
+
+
 def _sanitize_name(name: str) -> str:
     cleaned = "".join(
         ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in name.strip()
@@ -170,7 +194,7 @@ def create_app(
         name: str = Form(default=""),
         script_lines: str = Form(default=""),
         voice_direction: str = Form(default=""),
-        speed: float = Form(default=1.05),
+        speed: str = Form(default=""),
         margin: float = Form(default=1.0),
         punch: str = Form(default="on"),
         seed: str = Form(default=""),
@@ -180,6 +204,7 @@ def create_app(
             from fastapi import HTTPException
 
             raise HTTPException(status_code=400, detail="empty script")
+        parsed_speed = _parse_speed(speed)
         api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
         if not api_key:
             from fastapi import HTTPException
@@ -297,7 +322,7 @@ def create_app(
                         voice=settings.openrouter_voice,
                         model=settings.openrouter_tts_model,
                         instructions=voice_direction or None,
-                        speed=speed,
+                        speed=parsed_speed,
                         subtitle_lead=settings.subtitle_lead_sec,
                         apply_punch=use_punch,
                         use_whisper=True,

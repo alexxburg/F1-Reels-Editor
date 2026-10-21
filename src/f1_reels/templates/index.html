@@ -7,10 +7,10 @@
 <label>Reel name <input name="name" value=""></label><br>
 <label>Script lines <textarea name="script_lines"></textarea></label><br>
 <label>Voice direction <input name="voice_direction" value=""></label><br>
-<label>Speed <input type="number" step="any" name="speed" value="1.05"></label><br>
+<label>Speed <input type="range" name="speed" min="0.5" max="2" step="0.01" value="1.05"> <output id="speed-value">1.05x</output></label><br>
 <label>Punch <input type="checkbox" name="punch" checked></label><br>
 <label>Margin <input type="number" step="any" name="margin" value="1.0"></label><br>
-<label>Seed <input name="seed" value=""></label><br>
+<label>Seed <input name="seed" value=""> <button type="button" id="random-seed">Random</button></label><br>
 <button type="submit">Render</button>
 </form>
 <p id="status"></p>

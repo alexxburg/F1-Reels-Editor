@@ -169,6 +169,42 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
     assert 'id="download"' in html
     assert 'id="download-srt"' in html
     assert "/api/jobs" in html
+    # Speed is a slider (0.5x-2x) with a live readout.
+    assert 'type="range"' in html
+    assert 'name="speed"' in html
+    assert 'min="0.5"' in html
+    assert 'max="2"' in html
+    assert 'value="1.05"' in html
+    assert 'id="speed-value"' in html
+    # Seed row has a Random button that must not submit the form.
+    assert 'id="random-seed"' in html
+    assert 'type="button"' in html
+
+
+def test_speed_out_of_range_returns_400(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    for bad in ("2.5", "0.1", "not-a-float"):
+        r = client.post("/api/jobs", data=_post_fields(speed=bad))
+        assert r.status_code == 400, (bad, r.status_code, r.text)
+        assert "invalid speed" in r.text.lower()
+
+
+def test_speed_boundaries_accepted(tmp_path, monkeypatch):
+    app, webapp = _make_client(tmp_path, monkeypatch)
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    for good in ("0.5", "2.0"):
+        r = client.post("/api/jobs", data=_post_fields(speed=good))
+        assert r.status_code == 200, (good, r.status_code, r.text)
 
 
 def test_secret_key_in_config_raises(tmp_path, monkeypatch):

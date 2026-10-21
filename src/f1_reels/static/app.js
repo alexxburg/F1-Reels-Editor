@@ -1,3 +1,24 @@
+const speedInput = document.querySelector('input[name="speed"]');
+const speedValue = document.getElementById("speed-value");
+if (speedInput && speedValue) {
+  const updateSpeed = () => {
+    speedValue.textContent = `${speedInput.value}x`;
+  };
+  speedInput.addEventListener("input", updateSpeed);
+  updateSpeed();
+}
+const randomSeedButton = document.getElementById("random-seed");
+if (randomSeedButton) {
+  randomSeedButton.addEventListener("click", () => {
+    const seedInput = document.querySelector('input[name="seed"]');
+    if (!seedInput) {
+      return;
+    }
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    seedInput.value = String(buf[0] % 2147483648);
+  });
+}
 document.getElementById("reel-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
