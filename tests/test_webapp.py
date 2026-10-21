@@ -465,7 +465,9 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "#desktop-icons" not in css
     taskbar = html.split('id="task-buttons"')[1].split('id="tray-clock"')[0]
     assert taskbar.count("<svg") >= 2, taskbar[:200]
-    menu = html.split('id="start-menu"')[1].split("</div>")[0]
+    # Two-column menu nests divs, so slice to the taskbar footer instead of
+    # the first inner </div> (old single-column assumption).
+    menu = html.split('id="start-menu"')[1].split('<footer id="taskbar"')[0]
     assert menu.count("<svg") >= 2, menu[:200]
     # Windows flag image on the start button (bundled locally, user-supplied).
     start_btn = html.split('id="start-btn"')[1].split("</button>")[0]
@@ -475,3 +477,40 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert 'id="win-explorer" hidden' in html or 'id="win-explorer"\n' in html
     assert "showWindow" in js
     assert "hidden = " in js
+    # Two-column XP Start menu: header with avatar tile.
+    assert "start-menu-header" in html
+    assert "avatar" in html.lower()
+    assert "F1 Reels" in menu
+    # Left white column: both app rows keep icons + add one-line descriptions.
+    assert "Render reels from the pit wall." in menu
+    assert "Browse and download finished reels." in menu
+    assert menu.count('data-win="win-generator"') >= 1
+    # Right blue places column: "My Reels" place with live count badge that
+    # routes to the Explorer like the existing data-win buttons.
+    assert "My Reels" in menu
+    assert 'id="menu-reel-count"' in html
+    assert "menu-reel-count" in menu
+    assert menu.count('data-win="win-explorer"') >= 2
+    # Footer: exactly one orange "Log Off", never "Turn Off Computer".
+    assert "Log Off" in menu
+    assert "Turn Off Computer" not in html
+    # Menu carries its own icons: avatar + 2 apps + log-off door.
+    assert menu.count("<svg") >= 4, menu[:500]
+    # JS wiring: count badge populated from /api/reels, log-off handler,
+    # plus preserved showWindow / close-on-outside-click / Escape logic.
+    assert "menu-reel-count" in js
+    assert "/api/reels" in js
+    assert "showWindow" in js
+    assert "closeMenu" in js or "close-menu" in js.lower()
+    assert "Escape" in js
+    assert "aria-expanded" in js
+    assert "logoff" in js.lower()
+    # CSS hooks: two-column header/body/places/footer rules, orange Log Off
+    # gradient, popup above the taskbar.
+    assert "start-menu-header" in css
+    assert "start-menu-apps" in css
+    assert "start-menu-places" in css
+    assert "start-menu-footer" in css
+    assert "logoff" in css.lower()
+    assert "360px" in css
+    assert "z-index: 101" in css

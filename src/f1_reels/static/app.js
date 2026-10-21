@@ -143,12 +143,32 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       startBtn.setAttribute("aria-expanded", "false");
     }
   }
+  async function updateMenuCount() {
+    const badge = document.getElementById("menu-reel-count");
+    if (!badge) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/reels");
+      if (!res.ok) {
+        return;
+      }
+      const payload = await res.json();
+      const n = Array.isArray(payload.reels) ? payload.reels.length : 0;
+      badge.textContent = `(${n})`;
+    } catch (_) {
+      /* keep stale count on network failure */
+    }
+  }
   if (startBtn && startMenu) {
     startBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       const willOpen = startMenu.hidden;
       startMenu.hidden = !willOpen;
       startBtn.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) {
+        updateMenuCount();
+      }
     });
     document.addEventListener("click", (event) => {
       if (
@@ -252,6 +272,22 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       loadReels();
     }
     closeMenu();
+  }
+
+  // Log Off maps to show-desktop since there is no session to end.
+  const logoffBtn = document.getElementById("logoff-btn");
+  if (logoffBtn) {
+    logoffBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      ["win-generator", "win-explorer"].forEach((wid) => {
+        const w = document.getElementById(wid);
+        if (w) {
+          w.hidden = true;
+        }
+      });
+      syncPressed();
+      closeMenu();
+    });
   }
 
   document.querySelectorAll("[data-win]").forEach((btn) => {
