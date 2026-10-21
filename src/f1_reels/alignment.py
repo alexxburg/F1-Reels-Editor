@@ -167,13 +167,177 @@ def measure_silences(
     return min(lead, duration * 0.3), min(trail, duration * 0.3)
 
 
+def _normalize_word(word: str) -> str:
+    """Normalize for comparison: lowercase, alphanumeric only."""
+    return "".join(char for char in word.lower() if char.isalnum())
+
+
+#: Minimum fraction of script words with an assigned detection below
+#: which alignment is rejected (caller falls back to weighted split).
+#: 0.8 tolerates an isolated split/merge/substitution/insertion/
+#: deletion while rejecting garbage (e.g. 3 unrelated detections over
+#: 10 script words only match ~0.3 and return None).
+MATCHED_FRACTION_MIN = 0.8
+
+
+def align_script_words(
+    script_words: list[str], detected: list[WordTiming]
+) -> list[WordTiming] | None:
+    """Align script words to whisper detections with tolerant sequencing.
+
+    Dynamic program over script x detected with operations (costs):
+    match/substitute 1:1 (0 when normalized forms are equal, else 1),
+    skip-detected/insertion (1), skip-script/deletion (1), merge of
+    2 script words into 1 detected word when the concatenated
+    normalized forms are exactly equal (0.5), and split of 1 script
+    word over 2 detected words on the same equality (0.5).
+
+    Args:
+        script_words: Script tokens with original spelling (output words).
+        detected: Whisper word timings (transcribed spelling).
+
+    Returns:
+        One :class:`WordTiming` per script word using the original
+        script spelling, or ``None`` when the matched-script fraction
+        (script words with >= 1 assigned detection) is below
+        ``MATCHED_FRACTION_MIN``.
+    """
+    total = len(script_words)
+    count = len(detected)
+    if not script_words:
+        return []
+    if not detected:
+        return None
+    norm_script = [_normalize_word(word) for word in script_words]
+    norm_detected = [_normalize_word(item.word) for item in detected]
+    dp = [[0.0] * (count + 1) for _ in range(total + 1)]
+    for i in range(1, total + 1):
+        dp[i][0] = float(i)
+    for j in range(1, count + 1):
+        dp[0][j] = float(j)
+    for i in range(1, total + 1):
+        for j in range(1, count + 1):
+            sub = 0 if norm_script[i - 1] == norm_detected[j - 1] else 1
+            best = dp[i - 1][j - 1] + sub
+            skip_detected = dp[i][j - 1] + 1
+            if skip_detected < best:
+                best = skip_detected
+            skip_script = dp[i - 1][j] + 1
+            if skip_script < best:
+                best = skip_script
+            if (
+                i >= 2
+                and j >= 1
+                and norm_script[i - 2] + norm_script[i - 1] == norm_detected[j - 1]
+            ):
+                merge = dp[i - 2][j - 1] + 0.5
+                if merge < best:
+                    best = merge
+            if (
+                i >= 1
+                and j >= 2
+                and norm_script[i - 1] == norm_detected[j - 2] + norm_detected[j - 1]
+            ):
+                split = dp[i - 1][j - 2] + 0.5
+                if split < best:
+                    best = split
+            dp[i][j] = best
+
+    def _close(a: float, b: float) -> bool:
+        return abs(a - b) < 1e-9
+
+    assigned: list[list[int]] = [[] for _ in range(total)]
+    i, j = total, count
+    while i > 0 or j > 0:
+        if (
+            i >= 2
+            and j >= 1
+            and norm_script[i - 2] + norm_script[i - 1] == norm_detected[j - 1]
+            and _close(dp[i][j], dp[i - 2][j - 1] + 0.5)
+        ):
+            assigned[i - 2].append(j - 1)
+            assigned[i - 1].append(j - 1)
+            i -= 2
+            j -= 1
+            continue
+        if (
+            i >= 1
+            and j >= 2
+            and norm_script[i - 1] == norm_detected[j - 2] + norm_detected[j - 1]
+            and _close(dp[i][j], dp[i - 1][j - 2] + 0.5)
+        ):
+            assigned[i - 1].extend([j - 2, j - 1])
+            i -= 1
+            j -= 2
+            continue
+        if i >= 1 and j >= 1:
+            sub = 0 if norm_script[i - 1] == norm_detected[j - 1] else 1
+            if _close(dp[i][j], dp[i - 1][j - 1] + sub):
+                assigned[i - 1].append(j - 1)
+                i -= 1
+                j -= 1
+                continue
+        if i >= 1 and _close(dp[i][j], dp[i - 1][j] + 1):
+            i -= 1
+            continue
+        if j >= 1 and _close(dp[i][j], dp[i][j - 1] + 1):
+            j -= 1
+            continue
+        break
+    matched = sum(1 for indices in assigned if indices)
+    if matched / total < MATCHED_FRACTION_MIN:
+        return None
+    out: list[WordTiming | None] = [None] * total
+    for index, indices in enumerate(assigned):
+        if not indices:
+            continue
+        begin = min(detected[k].start for k in indices)
+        end = max(detected[k].end for k in indices)
+        out[index] = WordTiming(word=script_words[index], start=begin, end=end)
+    first_start = detected[0].start
+    last_end = detected[-1].end
+    pos = 0
+    while pos < total:
+        if out[pos] is not None:
+            pos += 1
+            continue
+        run_start = pos
+        while pos < total and out[pos] is None:
+            pos += 1
+        run_end = pos  # exclusive
+        left = out[run_start - 1] if run_start > 0 else None
+        right = out[run_end] if run_end < total else None
+        if left is not None and right is not None:
+            gap_start, gap_end = left.end, right.start
+        elif right is not None:
+            gap_start, gap_end = first_start, right.start
+        elif left is not None:
+            gap_start, gap_end = left.end, last_end
+        else:  # unreachable under the confidence gate, kept for safety
+            gap_start, gap_end = first_start, last_end
+        gap_words = script_words[run_start:run_end]
+        if gap_end > gap_start:
+            filled = split_words_fallback(
+                " ".join(gap_words), gap_end - gap_start, start=gap_start
+            )
+            for offset, item in enumerate(filled):
+                out[run_start + offset] = item
+        else:
+            for offset, word in enumerate(gap_words):
+                out[run_start + offset] = WordTiming(
+                    word=word, start=gap_start, end=gap_start
+                )
+    return [item for item in out if item is not None]
+
+
 def align_with_whisper(
     path: Path | str, text: str, model_name: str = "base"
 ) -> list[WordTiming] | None:
     """Align script words with real faster-whisper word timestamps.
 
-    Only a safe 1:1 mapping is returned; on any word-count mismatch the
-    caller should use the weighted fallback instead.
+    Tolerant sequence alignment handles splits, merges, substitutions,
+    insertions, and deletions; when the matched-script fraction falls
+    below the gate the caller should use the weighted fallback instead.
 
     Args:
         path: Synthesized audio file.
@@ -182,7 +346,7 @@ def align_with_whisper(
 
     Returns:
         Word timings, or ``None`` when whisper is unavailable, detects no
-        words, disagrees on the word count, or fails.
+        words, fails the match gate, or fails.
     """
     try:
         from faster_whisper import WhisperModel
@@ -195,24 +359,26 @@ def align_with_whisper(
         model = WhisperModel(model_name, device="cpu", compute_type="int8")
         segments, _ = model.transcribe(str(path), word_timestamps=True, vad_filter=True)
         detected = [
-            (chunk.word.strip(), float(chunk.start), float(chunk.end))
+            WordTiming(
+                word=chunk.word.strip(),
+                start=float(chunk.start),
+                end=float(chunk.end),
+            )
             for segment in segments
             for chunk in (segment.words or [])
             if chunk.word and chunk.word.strip()
         ]
         if not detected:
             return None
-        if len(detected) != len(script):
+        aligned = align_script_words(script, detected)
+        if aligned is None:
             logger.warning(
                 "Whisper detected %d words vs %d in the script, using estimate.",
                 len(detected),
                 len(script),
             )
             return None
-        return [
-            WordTiming(word=script[i], start=begin, end=end)
-            for i, (_, begin, end) in enumerate(detected)
-        ]
+        return aligned
     except (OSError, RuntimeError, ValueError) as exc:
         logger.warning("Whisper failed (%s), using estimated split.", str(exc)[:150])
         return None
