@@ -14,6 +14,6 @@ COPY src/ ./src/
 
 RUN pip install --no-cache-dir .
 
-EXPOSE 8001
+EXPOSE 8081
 
-CMD ["uvicorn", "f1_reels.webapp:APP", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "f1_reels.webapp:APP", "--host", "0.0.0.0", "--port", "8081"]

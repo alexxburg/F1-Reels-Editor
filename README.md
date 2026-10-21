@@ -53,8 +53,8 @@ Requires Docker 29+ with Compose v5.
 docker compose up --build
 ```
 
-Open `http://<lan-ip>:8001` from any device on your LAN
-(use `http://localhost:8001` on the host).
+Open `http://<lan-ip>:8081` from any device on your LAN
+(use `http://localhost:8081` on the host).
 
 1. Fill the form: reel name, script lines, `OPENROUTER_API_KEY`
    (or set it in `.env`), voice/model options, and upload brick videos.
