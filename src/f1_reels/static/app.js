@@ -173,15 +173,8 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   const taskButtons = Array.from(
     document.querySelectorAll('#task-buttons [data-win]')
   );
-  const deskIcons = Array.from(
-    document.querySelectorAll('#desktop-icons [data-win]')
-  );
   function syncPressed() {
     taskButtons.forEach((btn) => {
-      const win = document.getElementById(btn.getAttribute("data-win"));
-      btn.setAttribute("aria-pressed", String(!!win && !win.hidden));
-    });
-    deskIcons.forEach((btn) => {
       const win = document.getElementById(btn.getAttribute("data-win"));
       btn.setAttribute("aria-pressed", String(!!win && !win.hidden));
     });

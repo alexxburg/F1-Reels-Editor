@@ -450,19 +450,20 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "#tray-clock" in css
     assert "#start-menu" in css
     assert "#reel-list" in css or ".reel-list" in css
-    # Desktop icons: top-left launchers wired to the existing windows.
-    assert 'id="desktop-icons"' in html
-    assert html.count('class="desk-icon"') >= 2
-    assert 'data-win="win-generator"' in html
-    assert 'data-win="win-explorer"' in html
-    assert "<svg" in html
-    assert "Reel Generator" in html
-    assert "My Reels" in html
+    # App icons live in the taskbar buttons and start menu items
+    # (no desktop icons).
+    assert 'id="desktop-icons"' not in html
+    assert "desk-icon" not in html
+    assert ".desk-icon" not in css
+    assert "#desktop-icons" not in css
+    taskbar = html.split('id="task-buttons"')[1].split('id="tray-clock"')[0]
+    assert taskbar.count("<svg") >= 2, taskbar[:200]
+    menu = html.split('id="start-menu"')[1].split("</div>")[0]
+    assert menu.count("<svg") >= 2, menu[:200]
+    # Windows flag on the start button.
+    assert html.split('id="start-btn"')[1].split("</button>")[0].count("<svg") >= 1
     # Single-visible contract: exactly one window visible, generator first.
     assert 'id="win-generator"' in html
     assert 'id="win-explorer" hidden' in html or 'id="win-explorer"\n' in html
     assert "showWindow" in js
     assert "hidden = " in js
-    # Desktop icon styling hooks (transparent XP labels, 40px glyphs).
-    assert ".desk-icon" in css
-    assert "#desktop-icons" in css
