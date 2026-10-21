@@ -185,8 +185,12 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     app, _ = _make_client(tmp_path, monkeypatch)
     client = TestClient(app)
     html = client.get("/").text
-    # Stylesheet link for the pit-wall theme.
+    # Stylesheet link for the Windows XP (Luna) theme.
     assert '<link rel="stylesheet" href="/static/style.css"' in html
+    # App window chrome: glossy title bar with decorative controls.
+    assert 'class="window"' in html
+    assert 'class="title-bar"' in html
+    assert 'aria-hidden="true"' in html
     # Card-based form with grouped sections.
     assert html.count("<fieldset") >= 3
     assert html.count("<legend") >= 3
@@ -197,16 +201,25 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     for target in ("name", "script_lines", "voice_direction", "speed", "punch", "margin", "seed"):
         assert f'<label for="{target}"' in html, target
         assert f'id="{target}"' in html, target
-    # Status pill + download actions + app script.
+    # Status tray panel + download actions + app script.
     assert 'id="status"' in html
     assert 'id="download"' in html
     assert 'id="download-srt"' in html
     assert '<script src="/static/app.js"></script>' in html
-    # Polished CSS is served with the right content type.
+    # XP CSS is served with the right content type.
     css = client.get("/static/style.css")
     assert css.status_code == 200, css.text[:200]
     assert "text/css" in css.headers["content-type"]
-    assert "--f1-red" in css.text or "#e10600" in css.text.lower()
+    # XP Luna tokens (and the old pit-wall tokens must be gone).
+    assert "--xp-desktop" in css.text
+    assert "--xp-face" in css.text
+    assert "#ece9d8" in css.text.lower()
+    assert "Tahoma" in css.text
+    assert "outset" in css.text
+    assert "groove" in css.text
+    assert "inset" in css.text
+    assert "--f1-red" not in css.text
+    assert "#e10600" not in css.text.lower()
     assert "@media (prefers-reduced-motion" in css.text
 
 
