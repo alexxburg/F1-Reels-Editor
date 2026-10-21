@@ -333,3 +333,114 @@ def test_no_config_raises_runtime_error(tmp_path, monkeypatch):
     monkeypatch.setattr(webapp, "_default_project_root", lambda: tmp_path / "noroot")
     with pytest.raises(RuntimeError):
         webapp.create_app(tmp_path / "data")
+
+
+def test_api_reels_empty(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    r = client.get("/api/reels")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"reels": []}
+
+
+def test_api_reels_lists_done_job(tmp_path, monkeypatch):
+    app, webapp = _make_client(tmp_path, monkeypatch)
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4-bytes")
+        (out_dir / f"{name}.srt").write_text(
+            "1\n00:00:00,000 --> 00:00:01,000\nHello\n", encoding="utf-8"
+        )
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 200, r.text
+    job_id = r.json()["job_id"]
+    # Filesystem scan must survive restarts: drop the in-memory record.
+    app.state.jobs.clear()
+    r = client.get("/api/reels")
+    assert r.status_code == 200, r.text
+    payload = r.json()
+    assert "reels" in payload
+    assert len(payload["reels"]) == 1
+    entry = payload["reels"][0]
+    assert entry["job_id"] == job_id
+    assert entry["name"] == "TestReel"
+    assert entry["mp4"] is True
+    assert entry["srt"] is True
+    assert entry["size"] > 0
+    assert entry["modified"]
+    from datetime import datetime
+
+    datetime.fromisoformat(entry["modified"])
+
+
+def test_desktop_chrome(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    html = client.get("/").text
+    # Generator window keeps the exact form contract.
+    assert 'id="win-generator"' in html
+    assert 'id="reel-form"' in html
+    assert 'action="/api/jobs"' in html
+    assert 'method="post"' in html.lower()
+    assert 'enctype="multipart/form-data"' in html
+    for kept in (
+        'name="name"',
+        'name="script_lines"',
+        'name="voice_direction"',
+        'name="speed"',
+        'name="punch"',
+        'name="margin"',
+        'name="seed"',
+    ):
+        assert kept in html, kept
+    assert 'min="0.5"' in html
+    assert 'max="2"' in html
+    for did in (
+        'id="speed-value"',
+        'id="random-seed"',
+        'id="status"',
+        'id="download"',
+        'id="download-srt"',
+    ):
+        assert did in html, did
+    assert '<link rel="stylesheet" href="/static/style.css"' in html
+    assert '<script src="/static/app.js"></script>' in html
+    # Explorer window.
+    assert 'id="win-explorer"' in html
+    assert "Windows Explorer — Reels" in html
+    assert 'id="explorer-refresh"' in html
+    assert 'id="reel-list"' in html
+    for col in ("Name", "Size", "Modified"):
+        assert col in html, col
+    assert "No reels yet — render one first." in html
+    # Taskbar + start menu.
+    assert 'id="taskbar"' in html
+    assert 'id="start-btn"' in html
+    assert 'id="task-buttons"' in html
+    assert 'data-win="win-generator"' in html
+    assert 'data-win="win-explorer"' in html
+    assert "aria-pressed" in html
+    assert 'id="tray-clock"' in html
+    assert 'id="start-menu"' in html
+    # JS hooks: reels fetch, clock, window toggles.
+    js = client.get("/static/app.js").text
+    assert "/api/reels" in js
+    assert "reel-list" in js
+    assert "explorer-refresh" in js
+    assert "tray-clock" in js
+    assert "start-menu" in js
+    assert "aria-pressed" in js
+    # CSS hooks: fixed taskbar, start pill, explorer list.
+    css = client.get("/static/style.css").text
+    assert "#taskbar" in css
+    assert "#start-btn" in css
+    assert "#tray-clock" in css
+    assert "#start-menu" in css
+    assert "#reel-list" in css or ".reel-list" in css

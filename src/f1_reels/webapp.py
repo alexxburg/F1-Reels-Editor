@@ -386,6 +386,54 @@ def create_app(
         logger.info("Job %s queued for reel %s.", job_id, reel_name)
         return {"job_id": job_id}
 
+    @app.get("/api/reels")
+    def list_reels() -> dict[str, Any]:
+        from datetime import datetime, timezone
+
+        reels: list[dict[str, Any]] = []
+        try:
+            job_dirs = sorted(jobs_root.iterdir())
+        except OSError:
+            job_dirs = []
+        for job_dir in job_dirs:
+            if not job_dir.is_dir():
+                continue
+            job_id = job_dir.name
+            outputs_dir = job_dir / "outputs"
+            if not outputs_dir.is_dir():
+                continue
+            try:
+                mp4_paths = sorted(outputs_dir.glob("*.mp4"))
+            except OSError:
+                continue
+            for mp4_path in mp4_paths:
+                if not mp4_path.is_file():
+                    continue
+                name = mp4_path.stem
+                if not name:
+                    continue
+                srt_path = outputs_dir / f"{name}.srt"
+                try:
+                    stat = mp4_path.stat()
+                    size = int(stat.st_size)
+                    modified = datetime.fromtimestamp(
+                        stat.st_mtime, tz=timezone.utc
+                    ).isoformat()
+                except OSError:
+                    continue
+                reels.append(
+                    {
+                        "job_id": job_id,
+                        "name": name,
+                        "mp4": True,
+                        "srt": bool(srt_path.is_file()),
+                        "size": size,
+                        "modified": modified,
+                    }
+                )
+        reels.sort(key=lambda entry: entry["modified"], reverse=True)
+        return {"reels": reels}
+
     @app.get("/api/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:
         from fastapi import HTTPException

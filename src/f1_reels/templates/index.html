@@ -9,7 +9,7 @@
 </head>
 <body>
 <main class="page">
-<div class="window">
+<div class="window" id="win-generator">
 <div class="title-bar">
 <span class="title-bar-text">F1 Reels — Operate</span>
 <span class="title-bar-controls" aria-hidden="true"><span class="ctl ctl-min"></span><span class="ctl ctl-max"></span><span class="ctl ctl-close"></span></span>
@@ -81,7 +81,36 @@
 </section>
 </div>
 </div>
+<div class="window" id="win-explorer" hidden>
+<div class="title-bar">
+<span class="title-bar-text">Windows Explorer — Reels</span>
+<span class="title-bar-controls" aria-hidden="true"><span class="ctl ctl-min"></span><span class="ctl ctl-max"></span><span class="ctl ctl-close"></span></span>
+</div>
+<div class="window-body">
+<div class="explorer-toolbar">
+<button type="button" id="explorer-refresh" class="btn btn-secondary">Refresh</button>
+<span class="explorer-path">My Reels</span>
+</div>
+<div id="reel-list" class="reel-list" role="table" aria-label="Generated reels">
+<div class="reel-head" role="row"><span role="columnheader">Name</span><span role="columnheader">Size</span><span role="columnheader">Modified</span></div>
+<div class="reel-empty">No reels yet — render one first.</div>
+</div>
+</div>
+</div>
 </main>
+<div id="start-menu" hidden>
+<p class="start-menu-title">F1 Reels</p>
+<button type="button" data-win="win-generator">F1 Reels — Operate</button>
+<button type="button" data-win="win-explorer">Windows Explorer — Reels</button>
+</div>
+<footer id="taskbar">
+<button type="button" id="start-btn" aria-expanded="false" aria-controls="start-menu">start</button>
+<div id="task-buttons">
+<button type="button" data-win="win-generator" aria-pressed="true">F1 Reels — Operate</button>
+<button type="button" data-win="win-explorer" aria-pressed="false">Windows Explorer — Reels</button>
+</div>
+<span id="tray-clock" aria-label="Clock">--:--</span>
+</footer>
 <script src="/static/app.js"></script>
 </body>
 </html>

@@ -87,3 +87,177 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     }
   }, 1000);
 });
+
+// XP desktop: clock, start menu, window toggles, explorer. Existing
+// submit/poll/download logic above is untouched.
+(function () {
+  function formatSize(bytes) {
+    const n = Number(bytes);
+    if (!Number.isFinite(n) || n < 0) {
+      return "0 B";
+    }
+    if (n < 1024) {
+      return `${n} B`;
+    }
+    const units = ["KB", "MB", "GB"];
+    let value = n / 1024;
+    let unit = units[0];
+    for (let i = 0; i < units.length; i++) {
+      unit = units[i];
+      if (value < 1024 || i === units.length - 1) {
+        break;
+      }
+      value /= 1024;
+    }
+    return `${value.toFixed(1)} ${unit}`;
+  }
+
+  function formatDate(iso) {
+    if (!iso) {
+      return "";
+    }
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) {
+      return String(iso);
+    }
+    return d.toLocaleString();
+  }
+
+  const clock = document.getElementById("tray-clock");
+  function updateClock() {
+    if (!clock) {
+      return;
+    }
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    clock.textContent = `${hh}:${mm}`;
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  const startBtn = document.getElementById("start-btn");
+  const startMenu = document.getElementById("start-menu");
+  function closeMenu() {
+    if (!startMenu) {
+      return;
+    }
+    startMenu.hidden = true;
+    if (startBtn) {
+      startBtn.setAttribute("aria-expanded", "false");
+    }
+  }
+  if (startBtn && startMenu) {
+    startBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const willOpen = startMenu.hidden;
+      startMenu.hidden = !willOpen;
+      startBtn.setAttribute("aria-expanded", String(willOpen));
+    });
+    document.addEventListener("click", (event) => {
+      if (
+        !startMenu.hidden &&
+        !startMenu.contains(event.target) &&
+        event.target !== startBtn
+      ) {
+        closeMenu();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    });
+  }
+
+  const taskButtons = Array.from(
+    document.querySelectorAll('#task-buttons [data-win]')
+  );
+  function syncPressed() {
+    taskButtons.forEach((btn) => {
+      const win = document.getElementById(btn.getAttribute("data-win"));
+      btn.setAttribute("aria-pressed", String(!!win && !win.hidden));
+    });
+  }
+
+  async function loadReels() {
+    const list = document.getElementById("reel-list");
+    if (!list) {
+      return;
+    }
+    let reels = [];
+    try {
+      const res = await fetch("/api/reels");
+      if (res.ok) {
+        const payload = await res.json();
+        if (Array.isArray(payload.reels)) {
+          reels = payload.reels;
+        }
+      }
+    } catch (_) {
+      reels = [];
+    }
+    list.querySelectorAll(".reel-row, .reel-empty").forEach((node) => {
+      node.remove();
+    });
+    if (!reels.length) {
+      const empty = document.createElement("div");
+      empty.className = "reel-empty";
+      empty.textContent = "No reels yet — render one first.";
+      list.appendChild(empty);
+      return;
+    }
+    reels.forEach((reel) => {
+      const row = document.createElement("div");
+      row.className = "reel-row";
+      row.setAttribute("role", "row");
+      const name = document.createElement("span");
+      name.className = "reel-name";
+      name.textContent = reel.name;
+      const mp4 = document.createElement("a");
+      mp4.href = `/api/jobs/${reel.job_id}/download`;
+      mp4.textContent = "mp4";
+      name.appendChild(document.createTextNode(" "));
+      name.appendChild(mp4);
+      if (reel.srt) {
+        name.appendChild(document.createTextNode(" "));
+        const srt = document.createElement("a");
+        srt.href = `/api/jobs/${reel.job_id}/download?format=srt`;
+        srt.textContent = "srt";
+        name.appendChild(srt);
+      }
+      const size = document.createElement("span");
+      size.className = "reel-size";
+      size.textContent = formatSize(reel.size);
+      const modified = document.createElement("span");
+      modified.className = "reel-modified";
+      modified.textContent = formatDate(reel.modified);
+      modified.title = reel.modified || "";
+      row.appendChild(name);
+      row.appendChild(size);
+      row.appendChild(modified);
+      list.appendChild(row);
+    });
+  }
+
+  const refresh = document.getElementById("explorer-refresh");
+  if (refresh) {
+    refresh.addEventListener("click", loadReels);
+  }
+
+  document.querySelectorAll("[data-win]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const win = document.getElementById(btn.getAttribute("data-win"));
+      if (!win) {
+        return;
+      }
+      win.hidden = !win.hidden;
+      syncPressed();
+      if (!win.hidden && win.id === "win-explorer") {
+        loadReels();
+      }
+      closeMenu();
+    });
+  });
+  syncPressed();
+})();
