@@ -12,6 +12,7 @@ adapter and subtitle factories from :mod:`f1_reels.subtitles`.
 from __future__ import annotations
 
 import logging
+import mimetypes
 import os
 import shutil
 import uuid
@@ -30,6 +31,9 @@ from .pipeline import edit_video as _edit_video_impl
 from .subtitles import SubtitleStyle, group_words_into_lines, render_line_clips
 
 logger = logging.getLogger(__name__)
+
+# Serve .webp with the right type even on minimal Linux images.
+mimetypes.add_type("image/webp", ".webp")
 
 TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "index.html"
 STATIC_DIR = Path(__file__).resolve().parent / "static"

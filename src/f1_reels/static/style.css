@@ -70,7 +70,7 @@ body {
 /* App window: square pixel-crisp frame, blue edge like an XP window. */
 .window {
   border: 1px solid var(--xp-title-edge);
-  border-radius: 0;
+  border-radius: 8px 8px 0 0;
   background: var(--xp-title-start);
   padding: 0 3px 3px;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
@@ -88,7 +88,7 @@ body {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.35rem 0.35rem 0.35rem 0.6rem;
-  border-radius: 0;
+  border-radius: 7px 7px 0 0;
   color: #fff;
   background:
     linear-gradient(rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.12) 45%, rgba(255, 255, 255, 0) 50%),
