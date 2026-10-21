@@ -24,6 +24,16 @@ def test_web_deps_declared():
     assert "uvicorn" in pyproject
 
 
+def test_moviepy_stack_pinned_compatible():
+    """moviepy 1.0.3 needs imageio<2.37 (``metadata_errors`` was removed),
+    numpy 1.x and Pillow<10 (``ANTIALIAS`` removed)."""
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    assert "moviepy==1.0.3" in pyproject
+    assert "imageio==2.31.1" in pyproject
+    assert "numpy==1.26.4" in pyproject
+    assert "pillow==9.5.0" in pyproject
+
+
 def test_readme_documents_lan_webapp():
     readme = Path("README.md").read_text(encoding="utf-8")
     assert "docker compose up --build" in readme

@@ -10,12 +10,12 @@ fastapi==0.111.0
 frozenlist==1.8.0
 faster-whisper==1.2.1
 idna==3.20
-ImageIO==2.37.2
+ImageIO==2.31.1
 imageio-ffmpeg==0.6.0
 moviepy==1.0.3
 multidict==6.7.1
-numpy==2.0.2
-pillow==11.3.0
+numpy==1.26.4
+pillow==9.5.0
 proglog==0.1.12
 propcache==0.4.1
 python-dotenv==1.2.1
