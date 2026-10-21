@@ -70,7 +70,7 @@ body {
 /* App window: shaded blue frame like a real XP window, rounded top. */
 .window {
   border: 1px solid var(--xp-title-edge);
-  border-radius: 8px 8px 0 0;
+  border-radius: 8px;
   background: linear-gradient(to bottom, #3a93ff 0%, #0058e6 30%, #0046c8 100%);
   padding: 0 3px 3px;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
@@ -128,7 +128,7 @@ body {
 
 .window-body {
   background: var(--xp-face);
-  border-radius: 0;
+  border-radius: 0 0 7px 7px;
   padding: 1rem;
   overflow-y: auto;
   min-height: 0;

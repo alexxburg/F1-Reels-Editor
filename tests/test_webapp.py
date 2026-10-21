@@ -235,8 +235,8 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     assert "--f1-red" not in css.text
     assert "#e10600" not in css.text.lower()
     assert "@media (prefers-reduced-motion" in css.text
-    # XP window chrome: rounded top corners like real XP windows.
-    assert "border-radius: 8px 8px 0 0" in css.text
+    # XP window chrome: fully rounded corners.
+    assert "border-radius: 8px;" in css.text
     # Frame is a shaded blue gradient with a soft shadow, not flat + hard offset.
     assert "linear-gradient(to bottom, #3a93ff" in css.text
     assert "4px 4px 0 rgba(0, 0, 0" not in css.text
