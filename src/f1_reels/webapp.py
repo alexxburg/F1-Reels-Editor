@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, File, Form, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from .alignment import generate_voiceover as _generate_voiceover_impl
 from .config import Settings, find_first_font
@@ -26,6 +27,9 @@ from .pipeline import edit_video as _edit_video_impl
 from .subtitles import SubtitleStyle, group_words_into_lines, render_line_clips
 
 logger = logging.getLogger(__name__)
+
+TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "index.html"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 # Module-level aliases so tests can monkeypatch ``webapp.edit_video`` or
 # ``webapp.generate_voiceover`` to avoid network/moviepy work.
@@ -103,10 +107,16 @@ def create_app(data_root: Path | None = None) -> FastAPI:
     jobs: dict[str, dict[str, Any]] = {}
     app.state.jobs = jobs
     app.state.data_root = resolved_root
+    if STATIC_DIR.is_dir():
+        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
-        return PLACEHOLDER_HTML
+        try:
+            return TEMPLATE_PATH.read_text(encoding="utf-8")
+        except OSError:
+            logger.warning("Template %s missing, using placeholder.", TEMPLATE_PATH)
+            return PLACEHOLDER_HTML
 
     @app.post("/api/jobs")
     async def create_job(

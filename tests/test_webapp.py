@@ -76,3 +76,27 @@ def test_empty_script_returns_400(tmp_path):
         "/api/jobs", data=_post_fields(script_lines="   \n  "), files=files
     )
     assert r.status_code == 400
+
+
+def test_index_form_has_all_inputs_and_download_button(tmp_path):
+    from f1_reels import webapp
+
+    app = webapp.create_app(tmp_path)
+    client = TestClient(app)
+    html = client.get("/").text
+    assert 'name="script_lines"' in html
+    assert 'name="openrouter_key"' in html
+    assert 'name="openrouter_model"' in html
+    assert 'name="openrouter_voice"' in html
+    assert 'name="name"' in html
+    assert 'name="voice_direction"' in html
+    assert 'name="speed"' in html
+    assert 'name="punch"' in html
+    assert 'name="margin"' in html
+    assert 'name="seed"' in html
+    assert 'name="endcard"' in html
+    assert 'name="bricks"' in html
+    assert 'name="logo"' in html
+    assert 'name="font"' in html
+    assert 'id="download"' in html
+    assert "/api/jobs" in html
