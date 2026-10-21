@@ -23,11 +23,10 @@ import tempfile
 from pathlib import Path
 
 from .brick_config import LOGO_POR_VIDEO, TRIM_POR_TAKE
+from .crop import BOTTOM_CUT_PCT as BOTTOM_CUT_PCT
+from .crop import compute_crop_window, crop_ffmpeg_filter
 
 logger = logging.getLogger(__name__)
-
-TOP_CUT_PCT = 0.22
-BOTTOM_CUT_PCT = 0.18
 
 
 # --------------------------------------------------------------------------
@@ -291,20 +290,6 @@ def _cmd_edit(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------
 # postprocess-bricks
 # --------------------------------------------------------------------------
-def _crop_window(w: int, h: int, where: str) -> tuple[int, int, int, int]:
-    """Crop window ``(w2, h2, x, y)`` removing the logo while keeping 9:16."""
-    if where == "TL":
-        cut = int(round(h * TOP_CUT_PCT))
-    elif where == "BL":
-        cut = int(round(h * BOTTOM_CUT_PCT))
-    else:  # pragma: no cover - guarded by callers
-        raise ValueError(where)
-    h2 = h - cut
-    w2 = int(round(h2 * 9.0 / 16.0)) - (int(round(h2 * 9.0 / 16.0)) % 2)
-    x = (w - w2) // 2
-    return w2, h2, x, (cut if where == "TL" else 0)
-
-
 def _process_one(entrada: Path, salida: Path, logo: str | None, trim: float) -> bool:
     """Post-process one brick via ffmpeg; return ``True`` on success."""
     import imageio_ffmpeg
@@ -327,9 +312,10 @@ def _process_one(entrada: Path, salida: Path, logo: str | None, trim: float) -> 
         cmd += ["-ss", f"{trim:.3f}"]
     cmd += ["-i", str(entrada)]
     if logo in ("TL", "BL"):
-        w2, h2, x, y = _crop_window(w, h, logo)
+        position = "top" if logo == "TL" else "bottom"
+        box = compute_crop_window(w, h, position)  # type: ignore[arg-type]
         cmd += [
-            "-vf", f"crop={w2}:{h2}:{x}:{y},scale={w}:{h}",
+            "-vf", crop_ffmpeg_filter(box, w, h),
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
         ]
     else:

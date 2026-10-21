@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "f1-reels"
+version = "0.1.0"
+description = "Typed F1 reels editing pipeline (B-roll, end card, CLI)"
+requires-python = ">=3.10"
+dependencies = [
+    "moviepy==1.0.3",
+    "imageio-ffmpeg",
+    "numpy",
+    "pillow",
+    "requests",
+    "python-dotenv",
+    "faster-whisper",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+f1-reels = "f1_reels.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
