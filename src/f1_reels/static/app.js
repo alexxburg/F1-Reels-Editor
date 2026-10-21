@@ -3,6 +3,10 @@ const speedValue = document.getElementById("speed-value");
 if (speedInput && speedValue) {
   const updateSpeed = () => {
     speedValue.textContent = `${speedInput.value}x`;
+    const min = parseFloat(speedInput.min);
+    const max = parseFloat(speedInput.max);
+    const pct = ((parseFloat(speedInput.value) - min) / (max - min)) * 100;
+    speedInput.style.setProperty("--fill", `${pct}%`);
   };
   speedInput.addEventListener("input", updateSpeed);
   updateSpeed();

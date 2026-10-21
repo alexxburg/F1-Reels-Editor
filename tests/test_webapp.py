@@ -212,6 +212,13 @@ def test_index_polished_structure(tmp_path, monkeypatch):
     assert "text/css" in css.headers["content-type"]
     # XP Luna tokens (and the old pit-wall tokens must be gone).
     assert "--xp-desktop" in css.text
+    # Speed slider: webkit thumb, dynamic fill var, Firefox progress parity.
+    assert "::-webkit-slider-thumb" in css.text
+    assert "--fill" in css.text
+    assert "::-moz-range-progress" in css.text
+    js = client.get("/static/app.js")
+    assert js.status_code == 200, js.text[:200]
+    assert "setProperty" in js.text and "--fill" in js.text
     assert "--xp-face" in css.text
     assert "#ece9d8" in css.text.lower()
     assert "Tahoma" in css.text

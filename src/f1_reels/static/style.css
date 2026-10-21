@@ -215,6 +215,11 @@ input[type="range"]::-moz-range-thumb {
   border: 2px outset #ece9d8;
   cursor: pointer;
 }
+input[type="range"]::-moz-range-progress {
+  height: 8px;
+  border-radius: 0;
+  background: var(--xp-blue);
+}
 input[type="range"]::-moz-range-track {
   height: 8px;
   border-radius: 0;
