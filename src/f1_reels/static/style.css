@@ -752,6 +752,44 @@ output:focus-visible {
   min-width: 0;
 }
 
+/* In-progress queue rows: full-width header line plus a mini XP bar. */
+.reel-active-main {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.reel-active-main .reel-actions {
+  margin-left: auto;
+  flex: none;
+}
+
+.reel-active-status {
+  color: var(--xp-text-dim);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.reel-row:hover .reel-active-status { color: #fff; }
+
+.reel-progress {
+  grid-column: 1 / -1;
+  height: 14px;
+  background: #ffffff;
+  border: 2px inset #d4d0c8;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.reel-progress > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: repeating-linear-gradient(to right, #3c9e3c 0 10px, #ffffff 10px 12px);
+}
+
 .reel-row .reel-download {
   padding: 0.15rem 0.5rem;
   font-size: 0.8rem;

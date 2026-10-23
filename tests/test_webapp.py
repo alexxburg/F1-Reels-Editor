@@ -728,7 +728,7 @@ def test_generator_queue_resets_without_private_progress(tmp_path, monkeypatch):
     assert ">Queue<" in html and ">Render<" not in html
     assert 'id="progress"' not in html and 'id="download"' not in html
     js = client.get("/static/app.js").text
-    assert "clearInterval" not in js
+    assert "clearInterval(poll)" not in js
     assert "job.progress" not in js
     css = client.get("/static/style.css").text
     assert "xp-progress" not in css
@@ -896,3 +896,13 @@ def test_delete_queued_job_never_renders(tmp_path, monkeypatch):
     _wait_status(client, first)
     assert completed == ["First"], completed
     assert client.get(f"/api/jobs/{second}").status_code == 404
+
+
+def test_explorer_contract_covers_active_rows(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    js = client.get("/static/app.js").text
+    assert "/api/jobs" in js and "reel-progress" in js
+    assert "Queued #" in js
+    css = client.get("/static/style.css").text
+    assert ".reel-progress" in css

@@ -180,6 +180,79 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     });
   }
 
+  const filmIcon =
+    '<img src="/static/video-icon.png" width="16" height="16" alt="">';
+
+  function appendDeleteButton(container, reel) {
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn reel-delete";
+    del.textContent = "Delete";
+    del.setAttribute("aria-label", `Delete ${reel.name}`);
+    del.addEventListener("click", async () => {
+      if (!window.confirm(`Delete reel "${reel.name}"?`)) {
+        return;
+      }
+      del.disabled = true;
+      const res = await fetch(`/api/jobs/${reel.job_id}`, { method: "DELETE" });
+      if (!res.ok) {
+        del.disabled = false;
+        return;
+      }
+      loadReels();
+    });
+    container.appendChild(document.createTextNode(" "));
+    container.appendChild(del);
+  }
+
+  function renderActiveRow(list, reel) {
+    const row = document.createElement("div");
+    row.className = "reel-row reel-active";
+    row.setAttribute("role", "row");
+    const main = document.createElement("div");
+    main.className = "reel-active-main";
+    const icon = document.createElement("span");
+    icon.className = "reel-file-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = filmIcon;
+    main.appendChild(icon);
+    const label = document.createElement("span");
+    label.className = "reel-title";
+    label.textContent = reel.name;
+    label.title = reel.name;
+    main.appendChild(label);
+    const status = document.createElement("span");
+    status.className = "reel-active-status";
+    if (reel.status === "queued") {
+      status.textContent = `Queued #${reel.queue_position}`;
+    } else if (reel.status === "running") {
+      const pct = Number(reel.progress);
+      status.textContent = `Rendering… ${Number.isFinite(pct) ? pct : 0}%`;
+    } else {
+      status.textContent = reel.message || reel.status || "error";
+    }
+    main.appendChild(status);
+    const actions = document.createElement("span");
+    actions.className = "reel-actions";
+    appendDeleteButton(actions, reel);
+    main.appendChild(actions);
+    row.appendChild(main);
+    if (reel.status === "running") {
+      const pct = Math.max(0, Math.min(100, Number(reel.progress) || 0));
+      const track = document.createElement("div");
+      track.className = "reel-progress";
+      track.setAttribute("role", "progressbar");
+      track.setAttribute("aria-valuemin", "0");
+      track.setAttribute("aria-valuemax", "100");
+      track.setAttribute("aria-valuenow", String(pct));
+      const fill = document.createElement("span");
+      fill.style.width = `${pct}%`;
+      track.appendChild(fill);
+      row.appendChild(track);
+    }
+    list.appendChild(row);
+  }
+
   async function loadReels() {
     const list = document.getElementById("reel-list");
     if (!list) {
@@ -197,10 +270,23 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     } catch (_) {
       reels = [];
     }
+    let active = [];
+    try {
+      const res = await fetch("/api/jobs");
+      if (res.ok) {
+        const payload = await res.json();
+        if (Array.isArray(payload.jobs)) {
+          active = payload.jobs;
+        }
+      }
+    } catch (_) {
+      active = [];
+    }
     list.querySelectorAll(".reel-row, .reel-empty").forEach((node) => {
       node.remove();
     });
-    if (!reels.length) {
+    active.forEach((reel) => renderActiveRow(list, reel));
+    if (!reels.length && !active.length) {
       const empty = document.createElement("div");
       empty.className = "reel-empty";
       empty.setAttribute("role", "row");
@@ -209,8 +295,6 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       list.appendChild(empty);
       return;
     }
-    const filmIcon =
-      '<img src="/static/video-icon.png" width="16" height="16" alt="">';
     reels.forEach((reel) => {
       const row = document.createElement("div");
       row.className = "reel-row";
@@ -241,25 +325,7 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       dl.href = `/api/jobs/${reel.job_id}/download`;
       dl.textContent = "Download reel";
       actions.appendChild(dl);
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "btn reel-delete";
-      del.textContent = "Delete";
-      del.setAttribute("aria-label", `Delete ${reel.name}`);
-      del.addEventListener("click", async () => {
-        if (!window.confirm(`Delete reel "${reel.name}"?`)) {
-          return;
-        }
-        del.disabled = true;
-        const res = await fetch(`/api/jobs/${reel.job_id}`, { method: "DELETE" });
-        if (!res.ok) {
-          del.disabled = false;
-          return;
-        }
-        loadReels();
-      });
-      actions.appendChild(document.createTextNode(" "));
-      actions.appendChild(del);
+      appendDeleteButton(actions, reel);
       row.appendChild(name);
       row.appendChild(size);
       row.appendChild(modified);
@@ -271,6 +337,20 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   const refresh = document.getElementById("explorer-refresh");
   if (refresh) {
     refresh.addEventListener("click", loadReels);
+  }
+
+  // Live queue polling: refresh while the Explorer is visible, stop when
+  // any other window shows (or on log-off).
+  let explorerPoll = null;
+  function stopExplorerPoll() {
+    if (explorerPoll !== null) {
+      clearInterval(explorerPoll);
+      explorerPoll = null;
+    }
+  }
+  function startExplorerPoll() {
+    stopExplorerPoll();
+    explorerPoll = setInterval(loadReels, 2000);
   }
 
   // Single visible app window at full size: show the target, hide the other.
@@ -289,6 +369,9 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     syncPressed();
     if (id === "win-explorer") {
       loadReels();
+      startExplorerPoll();
+    } else {
+      stopExplorerPoll();
     }
     closeMenu();
   }
@@ -305,6 +388,7 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
         }
       });
       syncPressed();
+      stopExplorerPoll();
       closeMenu();
     });
   }
