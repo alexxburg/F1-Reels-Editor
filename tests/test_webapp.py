@@ -124,9 +124,13 @@ def test_explorer_row_has_download_reel_button(tmp_path, monkeypatch):
     assert "Download reel" in js
     assert "Delete" in js
     assert "reel-delete" in js or "delete" in js.lower()
-    # XP details view: each row renders a film-strip file-type icon (inline SVG).
-    assert "<svg" in js
+    # XP details view: each row renders the video file-type icon (local PNG).
+    assert "video-icon.png" in js
     assert "reel-file-icon" in js
+    for icon in ("video-icon.png", "videos-folder-icon.png"):
+        res = client.get(f"/static/{icon}")
+        assert res.status_code == 200, res.text[:200]
+        assert "image/png" in res.headers["content-type"]
     # Friendlier empty state points at the Reel Generator (JS-rendered path).
     assert "Reel Generator" in js
     assert "No reels yet" in js
@@ -527,6 +531,11 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "aria-pressed" in html
     assert 'id="tray-clock"' in html
     assert 'id="start-menu"' in html
+    # User profile picture served locally (non-square source is
+    # center-cropped to the square tile via CSS).
+    avatar = client.get("/static/profile-picture.jpg")
+    assert avatar.status_code == 200, avatar.text[:200]
+    assert "image/jpeg" in avatar.headers["content-type"]
     # JS hooks: reels fetch, clock, window toggles.
     js = client.get("/static/app.js").text
     assert "/api/reels" in js
@@ -557,7 +566,8 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert ".desk-icon" not in css
     assert "#desktop-icons" not in css
     taskbar = html.split('id="task-buttons"')[1].split('id="tray-clock"')[0]
-    assert taskbar.count("<svg") >= 2, taskbar[:200]
+    assert taskbar.count("<svg") >= 1, taskbar[:200]
+    assert "videos-folder-icon.png" in taskbar
     # Two-column menu nests divs, so slice to the taskbar footer instead of
     # the first inner </div> (old single-column assumption).
     menu = html.split('id="start-menu"')[1].split('<footer id="taskbar"')[0]
@@ -587,8 +597,11 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     # Footer: exactly one orange "Log Off", never "Turn Off Computer".
     assert "Log Off" in menu
     assert "Turn Off Computer" not in html
-    # Menu carries its own icons: avatar + 2 apps + log-off door.
-    assert menu.count("<svg") >= 4, menu[:500]
+    # Menu carries its own icons: generator (svg), Explorer rows
+    # (local folder image), log-off door (svg), photo avatar tile.
+    assert menu.count("<svg") >= 2, menu[:500]
+    assert menu.count("videos-folder-icon.png") >= 2, menu[:500]
+    assert "profile-picture" in menu
     # JS wiring: count badge populated from /api/reels, log-off handler,
     # plus preserved showWindow / close-on-outside-click / Escape logic.
     assert "menu-reel-count" in js
@@ -725,3 +738,48 @@ def test_progress_markup_and_assets(tmp_path, monkeypatch):
     assert "xp-progress" in css
     assert "repeating-linear-gradient" in css
     assert "3c9e3c" in css.lower()
+
+
+def test_brand_toggle_form_and_behavior(tmp_path, monkeypatch):
+    app, webapp = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    html = client.get("/").text
+    assert 'name="brand"' in html
+    assert 'value="careers"' in html
+    assert 'value="dynamics"' in html
+    assert 'class="output-row"' in html
+
+    captured: dict = {}
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        config = kwargs.get("config")
+        captured["logo_path"] = str(config.endcard.logo_path)
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    # Default (no brand field) renders with the configured Careers logo.
+    r = client.post("/api/jobs", data=_post_fields())
+    assert r.status_code == 200, r.text
+    assert captured["logo_path"] == str(app.state.settings.endcard_logo), captured
+    # Dynamics brand renders with the bundled RD logo.
+    fields = _post_fields(brand="dynamics")
+    r = client.post("/api/jobs", data=fields)
+    assert r.status_code == 200, r.text
+    assert captured["logo_path"].endswith("RD-Logo-White-Full.png"), captured
+    # Unknown brands are rejected like other invalid inputs.
+    r = client.post("/api/jobs", data=_post_fields(brand="nope"))
+    assert r.status_code == 400, (r.status_code, r.text)
+    assert "invalid brand" in r.text.lower()
+
+
+def test_dynamics_brand_subtitle_color(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+    settings = app.state.settings
+    assert webapp.brand_active_color("dynamics", settings) == (0xFF, 0x7E, 0x10, 255)
+    assert webapp.brand_active_color("careers", settings) == settings.subtitle_active_color
+    assert webapp.brand_active_color("", settings) == settings.subtitle_active_color

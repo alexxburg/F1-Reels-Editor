@@ -27,6 +27,9 @@ ALLOWED_CONFIG_KEYS: frozenset[str] = frozenset(
         "endcard_logo_delay",
         "endcard_logo_fade",
         "endcard_fade_out",
+        "video_codec",
+        "video_preset",
+        "video_crf",
     }
 )
 
@@ -227,6 +230,34 @@ class Settings:
 
     montserrat_fonts: tuple[str, ...] = ()
     threads: int = 4
+    video_codec: str = "libx264"
+    video_preset: str = "medium"
+    video_crf: int = 18
+
+    def __post_init__(self) -> None:
+        if self.video_codec not in ("libx264", "libx265"):
+            raise ValueError(
+                f"Invalid video_codec {self.video_codec!r} "
+                "(expected 'libx264' or 'libx265')."
+            )
+        if self.video_preset not in (
+            "ultrafast",
+            "superfast",
+            "veryfast",
+            "faster",
+            "fast",
+            "medium",
+            "slow",
+            "slower",
+            "veryslow",
+        ):
+            raise ValueError(
+                f"Invalid video_preset {self.video_preset!r}."
+            )
+        if not isinstance(self.video_crf, int) or not 0 <= self.video_crf <= 51:
+            raise ValueError(
+                f"Invalid video_crf {self.video_crf!r} (expected 0-51)."
+            )
 
     @classmethod
     def from_config(cls, mapping: dict) -> Settings:
@@ -371,6 +402,21 @@ class Settings:
             subtitle_block_gap_sec=defaults.subtitle_block_gap_sec,
             montserrat_fonts=defaults.montserrat_fonts,
             threads=defaults.threads,
+            video_codec=(
+                str(mapping["video_codec"]).strip().lower()
+                if "video_codec" in mapping
+                else defaults.video_codec
+            ),
+            video_preset=(
+                str(mapping["video_preset"]).strip().lower()
+                if "video_preset" in mapping
+                else defaults.video_preset
+            ),
+            video_crf=(
+                int(mapping["video_crf"])
+                if "video_crf" in mapping
+                else defaults.video_crf
+            ),
         )
 
     @classmethod
@@ -455,6 +501,9 @@ class Settings:
             subtitle_block_gap_sec=_get_float("SUBTITLE_BLOCK_GAP_SEC", 0.25),
             montserrat_fonts=_get_str_tuple("MONTSERRAT_FONTS", montserrat_default),
             threads=_get_int("THREADS", 4),
+            video_codec=_get_str("VIDEO_CODEC", "libx264").strip().lower(),
+            video_preset=_get_str("VIDEO_PRESET", "medium").strip().lower(),
+            video_crf=_get_int("VIDEO_CRF", 18),
         )
 
 

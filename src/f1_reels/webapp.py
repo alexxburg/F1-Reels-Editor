@@ -39,6 +39,23 @@ mimetypes.add_type("image/webp", ".webp")
 TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "index.html"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
+# Bundled Racetrack Dynamics endcard logo (white, transparent background).
+DYNAMICS_LOGO_PATH = STATIC_DIR / "RD-Logo-White-Full.png"
+
+# Per-render brand toggle values accepted by ``POST /api/jobs``.
+BRAND_CAREERS = "careers"
+BRAND_DYNAMICS = "dynamics"
+
+# Racetrack Dynamics subtitle highlight (karaoke active word).
+DYNAMICS_ACTIVE_COLOR = (0xFF, 0x7E, 0x10, 255)
+
+
+def brand_active_color(brand_key: str, settings) -> tuple[int, int, int, int]:
+    """Active-word subtitle color for a brand: Dynamics orange, else configured."""
+    if (brand_key or "").strip().lower() == BRAND_DYNAMICS:
+        return DYNAMICS_ACTIVE_COLOR
+    return settings.subtitle_active_color
+
 # Module-level aliases so tests can monkeypatch ``webapp.edit_video`` or
 # ``webapp.generate_voiceover`` to avoid network/moviepy work.
 edit_video = _edit_video_impl
@@ -202,12 +219,22 @@ def create_app(
         margin: float = Form(default=1.0),
         punch: str = Form(default="on"),
         seed: str = Form(default=""),
+        brand: str = Form(default="careers"),
     ) -> dict[str, str]:
         lines = [line.strip() for line in script_lines.splitlines() if line.strip()]
         if not lines:
             from fastapi import HTTPException
 
             raise HTTPException(status_code=400, detail="empty script")
+        brand_key = (brand or "").strip().lower()
+        if brand_key == BRAND_DYNAMICS:
+            logo_path = DYNAMICS_LOGO_PATH
+        elif brand_key in ("", BRAND_CAREERS):
+            logo_path = None
+        else:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="invalid brand")
         parsed_speed = _parse_speed(speed)
         api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
         if not api_key:
@@ -235,7 +262,8 @@ def create_app(
                 status_code=400,
                 detail=f"no bricks available in {bricks_source}",
             )
-        logo_path = settings.endcard_logo
+        if logo_path is None:
+            logo_path = settings.endcard_logo
         if not logo_path.is_file():
             from fastapi import HTTPException
 
@@ -309,7 +337,7 @@ def create_app(
                     max_words_per_line=settings.subtitle_max_words_per_line,
                     active_scale=settings.subtitle_active_scale,
                     base_color=settings.subtitle_base_color,
-                    active_color=settings.subtitle_active_color,
+                    active_color=brand_active_color(brand_key, settings),
                     use_gradient=settings.subtitle_use_gradient,
                     gradient_top=settings.subtitle_gradient_top,
                     gradient_bottom=settings.subtitle_gradient_bottom,
@@ -363,6 +391,9 @@ def create_app(
                     generate_srt=settings.generate_srt,
                     original_volume=settings.original_video_volume,
                     threads=settings.threads,
+                    video_codec=settings.video_codec,
+                    video_preset=settings.video_preset,
+                    video_crf=settings.video_crf,
                     seed=parsed_seed,
                     endcard=EndcardConfig(
                         logo_path=logo_path,

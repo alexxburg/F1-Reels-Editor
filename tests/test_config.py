@@ -67,6 +67,9 @@ ENV_KEYS = (
     "SUBTITLE_BLOCK_GAP_SEC",
     "MONTSERRAT_FONTS",
     "THREADS",
+    "VIDEO_CODEC",
+    "VIDEO_PRESET",
+    "VIDEO_CRF",
 )
 
 
@@ -204,5 +207,41 @@ def test_str_tuple_override(clean_env, monkeypatch):
 
 def test_invalid_int_raises(clean_env, monkeypatch):
     monkeypatch.setenv("THREADS", "not-an-int")
+    with pytest.raises(ValueError):
+        Settings.from_env()
+
+
+def test_video_encode_defaults(clean_env):
+    settings = Settings.from_env()
+    assert settings.video_codec == "libx264"
+    assert settings.video_preset == "medium"
+    assert settings.video_crf == 18
+
+
+def test_video_encode_env_overrides(clean_env, monkeypatch):
+    monkeypatch.setenv("VIDEO_CODEC", "libx265")
+    monkeypatch.setenv("VIDEO_PRESET", "slow")
+    monkeypatch.setenv("VIDEO_CRF", "20")
+    settings = Settings.from_env()
+    assert settings.video_codec == "libx265"
+    assert settings.video_preset == "slow"
+    assert settings.video_crf == 20
+
+
+def test_video_encode_from_config_mapping(clean_env):
+    settings = Settings.from_config(
+        {"video_codec": "libx265", "video_preset": "slow", "video_crf": "20"}
+    )
+    assert settings.video_codec == "libx265"
+    assert settings.video_preset == "slow"
+    assert settings.video_crf == 20
+
+
+@pytest.mark.parametrize(
+    "env_key,value",
+    [("VIDEO_CODEC", "vp9"), ("VIDEO_PRESET", "turbo"), ("VIDEO_CRF", "99")],
+)
+def test_video_encode_invalid_raises(clean_env, monkeypatch, env_key, value):
+    monkeypatch.setenv(env_key, value)
     with pytest.raises(ValueError):
         Settings.from_env()

@@ -132,7 +132,14 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     if (Number.isNaN(d.getTime())) {
       return String(iso);
     }
-    return d.toLocaleString();
+    // Short Explorer-style stamp (no seconds) so the Modified column fits.
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
 
   const clock = document.getElementById("tray-clock");
@@ -242,7 +249,7 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       return;
     }
     const filmIcon =
-      '<svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg>';
+      '<img src="/static/video-icon.png" width="16" height="16" alt="">';
     reels.forEach((reel) => {
       const row = document.createElement("div");
       row.className = "reel-row";
@@ -257,13 +264,22 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       const label = document.createElement("span");
       label.className = "reel-title";
       label.textContent = reel.name;
+      label.title = reel.name;
       name.appendChild(label);
+      const size = document.createElement("span");
+      size.className = "reel-size";
+      size.textContent = formatSize(reel.size);
+      const modified = document.createElement("span");
+      modified.className = "reel-modified";
+      modified.textContent = formatDate(reel.modified);
+      modified.title = reel.modified || "";
+      const actions = document.createElement("span");
+      actions.className = "reel-actions";
       const dl = document.createElement("a");
       dl.className = "btn reel-download";
       dl.href = `/api/jobs/${reel.job_id}/download`;
       dl.textContent = "Download reel";
-      name.appendChild(document.createTextNode(" "));
-      name.appendChild(dl);
+      actions.appendChild(dl);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "btn reel-delete";
@@ -281,18 +297,12 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
         }
         loadReels();
       });
-      name.appendChild(document.createTextNode(" "));
-      name.appendChild(del);
-      const size = document.createElement("span");
-      size.className = "reel-size";
-      size.textContent = formatSize(reel.size);
-      const modified = document.createElement("span");
-      modified.className = "reel-modified";
-      modified.textContent = formatDate(reel.modified);
-      modified.title = reel.modified || "";
+      actions.appendChild(document.createTextNode(" "));
+      actions.appendChild(del);
       row.appendChild(name);
       row.appendChild(size);
       row.appendChild(modified);
+      row.appendChild(actions);
       list.appendChild(row);
     });
   }

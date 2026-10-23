@@ -52,6 +52,7 @@
 </fieldset>
 <fieldset>
 <legend>Output</legend>
+<div class="output-row">
 <div class="field">
 <label for="margin">Margin</label>
 <input id="margin" type="number" step="any" name="margin" value="1.0" aria-describedby="margin-hint">
@@ -64,6 +65,15 @@
 <button type="button" id="random-seed" class="btn btn-secondary">Random</button>
 </div>
 <p class="hint" id="seed-hint">Empty means random. Use a fixed seed to reproduce a cut.</p>
+</div>
+<div class="field">
+<label for="brand">Brand</label>
+<select id="brand" name="brand" aria-describedby="brand-hint">
+<option value="careers" selected>Racetrack Careers</option>
+<option value="dynamics">Racetrack Dynamics</option>
+</select>
+<p class="hint" id="brand-hint">Endcard logo baked into this render.</p>
+</div>
 </div>
 </fieldset>
 <button type="submit" class="btn btn-primary">Render</button>
@@ -87,7 +97,7 @@
 <span class="explorer-path">My Reels</span>
 </div>
 <div id="reel-list" class="reel-list" role="table" aria-label="Generated reels">
-<div class="reel-head" role="row"><span class="reel-col" role="columnheader">Name</span><span class="reel-col" role="columnheader">Size</span><span class="reel-col" role="columnheader">Modified</span></div>
+<div class="reel-head" role="row"><span class="reel-col" role="columnheader">Name</span><span class="reel-col" role="columnheader">Size</span><span class="reel-col" role="columnheader">Modified</span><span class="reel-col reel-col-actions" role="columnheader">Actions</span></div>
 <div class="reel-empty" role="row"><svg class="reel-empty-art" width="48" height="48" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg><p class="reel-empty-title">No reels yet</p><p class="reel-empty-hint">Render one from Reel Generator.</p></div>
 </div>
 </div>
@@ -96,15 +106,15 @@
 <div id="start-menu" hidden>
   <div class="start-menu-header">
     <span class="start-menu-user">F1 Reels</span>
-    <span class="avatar-tile" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#3a93ff"/><circle cx="16" cy="11" r="6" fill="#fff"/><path d="M5 27c0-6 5-9 11-9s11 3 11 9v1H5v-1z" fill="#fff"/></svg></span>
+    <span class="avatar-tile"><img src="/static/profile-picture.jpg" width="40" height="40" alt="User profile picture"></span>
   </div>
   <div class="start-menu-body">
     <div class="start-menu-apps">
       <button type="button" data-win="win-generator"><svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg><span class="app-text"><span class="app-name">F1 Reels — Operate</span><span class="app-desc">Render reels from the pit wall.</span></span></button>
-      <button type="button" data-win="win-explorer"><svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="35" rx="14" ry="2.2" fill="#000" opacity="0.3"/><path d="M4 9 h11 l3 3 h17 v4 h-31 z" fill="#c9922e" stroke="#7a5200" stroke-width="1"/><rect x="9" y="7.5" width="15" height="7" fill="#fff" stroke="#a0a0a0" stroke-width="0.75"/><rect x="4" y="13" width="32" height="19" fill="#ffd75e" stroke="#8a6d00" stroke-width="1"/><rect x="4" y="13" width="32" height="3.5" fill="#ffecab"/><rect x="4" y="13" width="3" height="19" fill="#e8b53a" opacity="0.7"/></svg><span class="app-text"><span class="app-name">Windows Explorer — Reels</span><span class="app-desc">Browse and download finished reels.</span></span></button>
+      <button type="button" data-win="win-explorer"><img src="/static/videos-folder-icon.png" width="16" height="16" alt=""><span class="app-text"><span class="app-name">Windows Explorer — Reels</span><span class="app-desc">Browse and download finished reels.</span></span></button>
     </div>
     <div class="start-menu-places">
-      <button type="button" data-win="win-explorer"><svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="35" rx="14" ry="2.2" fill="#000" opacity="0.3"/><path d="M4 9 h11 l3 3 h17 v4 h-31 z" fill="#c9922e" stroke="#7a5200" stroke-width="1"/><rect x="9" y="7.5" width="15" height="7" fill="#fff" stroke="#a0a0a0" stroke-width="0.75"/><rect x="4" y="13" width="32" height="19" fill="#ffd75e" stroke="#8a6d00" stroke-width="1"/><rect x="4" y="13" width="32" height="3.5" fill="#ffecab"/><rect x="4" y="13" width="3" height="19" fill="#e8b53a" opacity="0.7"/></svg><span>My Reels <span id="menu-reel-count">(0)</span></span></button>
+      <button type="button" data-win="win-explorer"><img src="/static/videos-folder-icon.png" width="16" height="16" alt=""><span>My Reels <span id="menu-reel-count">(0)</span></span></button>
     </div>
   </div>
   <div class="start-menu-footer">
@@ -116,7 +126,7 @@
 <button type="button" id="start-btn" aria-expanded="false" aria-controls="start-menu"><img src="/static/start-xp.webp" width="18" height="18" alt="">start</button>
 <div id="task-buttons">
 <button type="button" data-win="win-generator" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg>F1 Reels — Operate</button>
-<button type="button" data-win="win-explorer" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="35" rx="14" ry="2.2" fill="#000" opacity="0.3"/><path d="M4 9 h11 l3 3 h17 v4 h-31 z" fill="#c9922e" stroke="#7a5200" stroke-width="1"/><rect x="9" y="7.5" width="15" height="7" fill="#fff" stroke="#a0a0a0" stroke-width="0.75"/><rect x="4" y="13" width="32" height="19" fill="#ffd75e" stroke="#8a6d00" stroke-width="1"/><rect x="4" y="13" width="32" height="3.5" fill="#ffecab"/><rect x="4" y="13" width="3" height="19" fill="#e8b53a" opacity="0.7"/></svg>Windows Explorer — Reels</button>
+<button type="button" data-win="win-explorer" aria-pressed="false"><img src="/static/videos-folder-icon.png" width="16" height="16" alt="">Windows Explorer — Reels</button>
 </div>
 <span id="tray-clock" aria-label="Clock">--:--</span>
 </footer>

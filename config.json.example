@@ -10,5 +10,8 @@
   "endcard_black_fade": 1.2,
   "endcard_logo_delay": 0.3,
   "endcard_logo_fade": 1.0,
-  "endcard_fade_out": 0.6
+  "endcard_fade_out": 0.6,
+  "video_codec": "libx264",
+  "video_preset": "medium",
+  "video_crf": 18
 }

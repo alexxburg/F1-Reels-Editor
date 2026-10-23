@@ -292,7 +292,7 @@ class BrollSelector:
                 last_frame = pieces[-1].get_frame(pieces[-1].duration - 0.04)
                 freeze = _ImageClip(last_frame, transparent=False).set_duration(missing)
                 try:
-                    freeze = freeze.set_fps(24)
+                    freeze = freeze.set_fps(30)  # must match PipelineConfig.fps
                 except Exception:
                     pass
                 concat = concatenate_videoclips([concat, freeze], method="chain")

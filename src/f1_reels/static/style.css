@@ -182,7 +182,8 @@ body {
 input[type="text"],
 input:not([type]),
 textarea,
-input[type="number"] {
+input[type="number"],
+select {
   width: 100%;
   padding: 0.4rem 0.45rem;
   border-radius: 0;
@@ -268,6 +269,16 @@ input[type="range"]::-moz-range-track {
   gap: 0.5rem;
 }
 .seed-row input { flex: 1; min-width: 0; }
+
+/* Output row: Margin, Seed, Brand share one horizontal line on desktop,
+   stacking vertically on narrow screens. */
+.output-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+.output-row .field { margin-bottom: 0; }
 
 /* XP buttons: 3px radius only, outset bevels. */
 .btn {
@@ -369,6 +380,9 @@ output:focus-visible {
 }
 
 /* Fluid on small screens; roomier window body on wide screens. */
+@media (max-width: 600px) {
+  .output-row { grid-template-columns: 1fr; }
+}
 @media (max-width: 480px) {
   .page { padding: 0.75rem 0.5rem 2rem; }
   .window-body { padding: 0.75rem; }
@@ -452,7 +466,8 @@ output:focus-visible {
   align-items: center;
   gap: 0.35rem;
 }
-#task-buttons button svg {
+#task-buttons button svg,
+#task-buttons button img {
   flex: none;
 }
 
@@ -523,6 +538,15 @@ output:focus-visible {
   flex: none;
 }
 .avatar-tile svg { display: block; }
+/* Non-square photos are letterboxed to the square tile so the whole
+   image stays visible. */
+.avatar-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
 
 .start-menu-body {
   display: flex;
@@ -552,7 +576,8 @@ output:focus-visible {
   align-items: center;
   gap: 0.5rem;
 }
-.start-menu-apps button svg { flex: none; }
+.start-menu-apps button svg,
+.start-menu-apps button img { flex: none; }
 
 .start-menu-apps button:hover {
   background: #0058e6;
@@ -594,7 +619,8 @@ output:focus-visible {
   align-items: center;
   gap: 0.5rem;
 }
-.start-menu-places button svg { flex: none; }
+.start-menu-places button svg,
+.start-menu-places button img { flex: none; }
 .start-menu-places button:hover { background: rgba(255, 255, 255, 0.25); }
 
 #menu-reel-count { font-weight: 700; white-space: nowrap; }
@@ -647,7 +673,7 @@ output:focus-visible {
 
 .reel-head {
   display: grid;
-  grid-template-columns: 1fr 90px 150px;
+  grid-template-columns: minmax(0, 1fr) 84px minmax(0, 185px) 200px;
   gap: 0;
   padding: 0;
   font-size: 0.8rem;
@@ -662,6 +688,7 @@ output:focus-visible {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .reel-col:last-child {
@@ -683,12 +710,17 @@ output:focus-visible {
 
 .reel-row {
   display: grid;
-  grid-template-columns: 1fr 90px 150px;
-  gap: 0.5rem;
-  padding: 0.25rem 0.5rem;
+  grid-template-columns: minmax(0, 1fr) 84px minmax(0, 185px) 200px;
+  gap: 0;
+  padding: 0;
   font-size: 0.85rem;
   border-bottom: 1px dotted #d4d0c8;
   align-items: center;
+}
+
+.reel-row > * {
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
 }
 
 .reel-row:hover {
@@ -706,6 +738,7 @@ output:focus-visible {
   gap: 0.35rem;
   min-width: 0;
   font-weight: 600;
+  overflow: hidden;
 }
 
 .reel-file-icon {
@@ -714,18 +747,24 @@ output:focus-visible {
   align-items: center;
 }
 
-.reel-file-icon svg { display: block; }
+.reel-file-icon svg,
+.reel-file-icon img { display: block; }
 
 .reel-title {
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .reel-size {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .reel-modified {
@@ -733,6 +772,15 @@ output:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.reel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .reel-row .reel-download {
@@ -745,10 +793,18 @@ output:focus-visible {
   font-size: 0.8rem;
 }
 
+.reel-row .reel-download:hover {
+  background: #2f6b1d;
+  border-color: #1e4a12;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+}
+
 .reel-row .reel-delete:hover {
-  background: #f8d7d7;
-  border-color: #d98a8a;
-  color: #c00000;
+  background: #c00000;
+  border-color: #7a0000;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
 }
 
 .reel-empty {
@@ -779,4 +835,22 @@ output:focus-visible {
 
 @media (max-width: 720px) {
   .page { flex-direction: column; }
+}
+
+/* Narrow explorer: stack rows into cards so Name/Size/Modified/Actions
+   never overlap. Header is hidden; each row wraps on its own. */
+@media (max-width: 560px) {
+  .reel-head { display: none; }
+  .reel-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.15rem 0.5rem;
+    padding: 0.4rem 0.5rem;
+    align-items: center;
+  }
+  .reel-row > * { padding: 0.1rem 0; }
+  .reel-name { grid-column: 1 / -1; }
+  .reel-size { grid-column: 1; grid-row: 2; text-align: left; }
+  .reel-modified { grid-column: 2; grid-row: 2; text-align: right; }
+  .reel-actions { grid-column: 1 / -1; grid-row: 3; flex-wrap: wrap; }
+  .reel-actions .btn { flex: 1 1 auto; text-align: center; }
 }

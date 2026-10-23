@@ -50,8 +50,11 @@ class PipelineConfig:
     min_fragment: float = 1.0
     generate_srt: bool = True
     original_volume: float = 0.0
-    fps: int = 24
+    fps: int = 30
     threads: int = 4
+    video_codec: str = "libx264"
+    video_preset: str = "medium"
+    video_crf: int = 18
     bricks_already_cropped: bool = True
     seed: int | None = None
     endcard: EndcardConfig = field(default_factory=EndcardConfig)
@@ -86,6 +89,10 @@ class _MoviepyProgress:
         self, on_progress: Callable[[str, float], None] | None = None
     ) -> None:
         self._on_progress = on_progress
+        # Highest encode fraction reported so far. Moviepy drives one
+        # iter_bar per pass (temp-audio chunks, then video frames); without
+        # this each new bar would restart the UI bar at 50%.
+        self._peak_fraction = 0.0
 
     @staticmethod
     def encode_pct(fraction: float) -> float:
@@ -105,7 +112,21 @@ class _MoviepyProgress:
         if self._on_progress is None:
             return
         try:
-            self._on_progress("encode", self.encode_pct(fraction))
+            f = float(fraction)
+        except Exception:
+            return
+        if f != f:  # NaN: hold the peak instead of jumping
+            f = self._peak_fraction
+        if f < 0.0:
+            f = 0.0
+        if f > 1.0:
+            f = 1.0
+        if f < self._peak_fraction:
+            f = self._peak_fraction
+        else:
+            self._peak_fraction = f
+        try:
+            self._on_progress("encode", self.encode_pct(f))
         except Exception:
             pass
 
@@ -397,11 +418,19 @@ def edit_video(
 
         final.write_videofile(
             str(out_path),
-            codec="libx264",
+            codec=config.video_codec,
             audio_codec="aac",
             fps=config.fps,
-            preset="ultrafast",
+            preset=config.video_preset,
             threads=config.threads,
+            ffmpeg_params=[
+                "-movflags",
+                "+faststart",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                str(config.video_crf),
+            ],
             logger=_MoviepyProgress(on_progress) if on_progress is not None else None,
         )
 

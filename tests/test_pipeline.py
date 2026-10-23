@@ -203,6 +203,17 @@ def test_moviepy_progress_iter_bar_reports_encode():
     assert seen and seen[-1][1] == 95.0
 
 
+def test_moviepy_progress_never_goes_backwards_across_bars():
+    """A second iter_bar (moviepy's temp-audio pass, then the video-frame
+    pass) must not restart the bar at 50%."""
+    seen: list[float] = []
+    prog = pipeline._MoviepyProgress(lambda stage, pct: seen.append(pct))
+    list(prog.iter_bar(range(4), total=4))
+    list(prog.iter_bar(range(6), total=6))
+    assert seen == sorted(seen), seen
+    assert seen[-1] == 95.0
+
+
 def _install_progress_stub(monkeypatch):
     """Fake moviepy.editor whose write_videofile drives logger.iter_bar."""
 
@@ -353,3 +364,86 @@ def test_edit_video_progress_never_raises(tmp_path, monkeypatch):
         on_progress=bad_progress,
     )
     assert ok is True
+
+
+def test_edit_video_passes_codec_preset_crf_faststart(tmp_path, monkeypatch):
+    """write_videofile must honor the configured codec/preset/CRF and
+    faststart (moov at front), instead of hardcoded ultrafast."""
+    from f1_reels import pipeline as _pipeline_mod
+
+    _install_progress_stub(monkeypatch)
+    import moviepy.editor as editor
+
+    captured: dict = {}
+    orig_composite = editor.CompositeVideoClip
+
+    def capturing(*args, **kwargs):
+        clip = orig_composite(*args, **kwargs)
+        orig_write = clip.write_videofile
+
+        def cap(*a, **k):
+            captured.update(k)
+            return orig_write(*a, **k)
+
+        clip.write_videofile = cap
+        return clip
+
+    editor.CompositeVideoClip = capturing
+
+    def fake_synthesize(text: str, audio_path: Path):
+        Path(audio_path).write_bytes(b"fake-audio")
+        words = [(w, float(i), float(i + 1)) for i, w in enumerate(text.split())]
+        return words, float(len(words))
+
+    class _FakeVideo:
+        w = 1080
+        h = 1920
+        duration = 10.0
+        audio = None
+
+    class _FakeSelector:
+        def __init__(self, config):
+            self._config = config
+
+        def build_broll(self, target_dur, seed=None):
+            return _FakeVideo(), [], []
+
+    monkeypatch.setattr(_pipeline_mod, "BrollSelector", _FakeSelector)
+
+    from f1_reels.pipeline import EndcardConfig, PipelineConfig
+
+    config = PipelineConfig(
+        output_dir=tmp_path / "out",
+        bricks_dir=tmp_path / "bricks",
+        generate_srt=False,
+        endcard=EndcardConfig(active=False),
+        video_codec="libx265",
+        video_preset="slow",
+        video_crf=20,
+    )
+    ok = _pipeline_mod.edit_video(
+        "reel1",
+        ["hello world"],
+        tmp_path / "font.ttf",
+        tmp_path / "tmp",
+        config=config,
+        synthesize_speech=fake_synthesize,
+        subtitle_overlays=None,
+    )
+    assert ok is True
+    assert captured.get("codec") == "libx265", captured
+    assert captured.get("preset") == "slow", captured
+    params = captured.get("ffmpeg_params") or []
+    assert "-movflags" in params and "+faststart" in params, params
+    assert "-crf" in params and "20" in params, params
+    assert "-pix_fmt" in params and "yuv420p" in params, params
+
+
+def test_pipeline_config_encode_defaults(tmp_path):
+    from f1_reels.pipeline import PipelineConfig
+
+    config = PipelineConfig(output_dir=tmp_path / "o", bricks_dir=tmp_path / "b")
+    assert config.fps == 30
+    assert config.video_codec == "libx264"
+    assert config.video_preset == "medium"
+    assert config.video_crf == 18

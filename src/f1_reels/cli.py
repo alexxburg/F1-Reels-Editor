@@ -182,6 +182,9 @@ def _cmd_edit(args: argparse.Namespace) -> int:
         generate_srt=settings.generate_srt,
         original_volume=settings.original_video_volume,
         threads=settings.threads,
+        video_codec=settings.video_codec,
+        video_preset=settings.video_preset,
+        video_crf=settings.video_crf,
         seed=args.seed,
         endcard=EndcardConfig(
             logo_path=settings.endcard_logo,
