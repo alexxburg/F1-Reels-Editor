@@ -253,12 +253,17 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     list.appendChild(row);
   }
 
+  // Last good list data: a failed poll must leave the displayed rows
+  // stale-but-visible, never flash an empty list.
+  let lastReels = null;
+  let lastActive = null;
+
   async function loadReels() {
     const list = document.getElementById("reel-list");
     if (!list) {
       return;
     }
-    let reels = [];
+    let reels = null;
     try {
       const res = await fetch("/api/reels");
       if (res.ok) {
@@ -268,9 +273,9 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
         }
       }
     } catch (_) {
-      reels = [];
+      reels = null;
     }
-    let active = [];
+    let active = null;
     try {
       const res = await fetch("/api/jobs");
       if (res.ok) {
@@ -280,7 +285,21 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
         }
       }
     } catch (_) {
+      active = null;
+    }
+    if (reels !== null) {
+      lastReels = reels;
+    }
+    if (active !== null) {
+      lastActive = active;
+    }
+    if (lastReels === null && lastActive === null) {
+      // Nothing ever loaded: fall through to the empty state below.
+      reels = [];
       active = [];
+    } else {
+      reels = lastReels || [];
+      active = lastActive || [];
     }
     list.querySelectorAll(".reel-row, .reel-empty").forEach((node) => {
       node.remove();

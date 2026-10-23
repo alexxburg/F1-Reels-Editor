@@ -858,7 +858,7 @@ def test_active_jobs_endpoint(tmp_path, monkeypatch):
         assert by_id[first]["queue_position"] is None
         assert by_id[second]["status"] == "queued"
         assert by_id[second]["queue_position"] == 1
-        assert {"job_id", "name", "status", "progress", "stage", "queue_position"} <= set(
+        assert {"job_id", "name", "status", "message", "progress", "stage", "queue_position"} <= set(
             by_id[first]
         )
     finally:
@@ -906,3 +906,109 @@ def test_explorer_contract_covers_active_rows(tmp_path, monkeypatch):
     assert "Queued #" in js
     css = client.get("/static/style.css").text
     assert ".reel-progress" in css
+
+
+def test_claim_running_transitions_queued_to_running(tmp_path, monkeypatch):
+    import threading
+
+    from f1_reels import webapp
+
+    _, _ = _make_client(tmp_path, monkeypatch)
+    jobs = {"a": {"job_id": "a", "status": "queued", "queue_seq": 1}}
+    rec = webapp._claim_running(jobs, threading.Lock(), "a")
+    assert rec is jobs["a"]
+    assert rec["status"] == "running"
+
+
+def test_claim_running_returns_none_unless_queued(tmp_path, monkeypatch):
+    import threading
+
+    from f1_reels import webapp
+
+    _, _ = _make_client(tmp_path, monkeypatch)
+    lock = threading.Lock()
+    assert webapp._claim_running({}, lock, "missing") is None
+    jobs = {"a": {"job_id": "a", "status": "running", "queue_seq": 1}}
+    assert webapp._claim_running(jobs, lock, "a") is None
+    assert jobs["a"]["status"] == "running"
+
+
+def test_concurrent_claim_has_single_winner(tmp_path, monkeypatch):
+    import threading
+
+    from f1_reels import webapp
+
+    _, _ = _make_client(tmp_path, monkeypatch)
+    jobs = {"a": {"job_id": "a", "status": "queued", "queue_seq": 1}}
+    lock = threading.Lock()
+    wins = []
+    threads = [
+        threading.Thread(target=lambda: wins.append(webapp._claim_running(jobs, lock, "a")))
+        for _ in range(16)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=10)
+    assert sum(1 for w in wins if w is not None) == 1
+
+
+def test_concurrent_mutation_and_snapshot_never_raises(tmp_path, monkeypatch):
+    import threading
+
+    from f1_reels import webapp
+
+    _, _ = _make_client(tmp_path, monkeypatch)
+    jobs = {}
+    lock = threading.Lock()
+    errors = []
+
+    def mutate(i):
+        try:
+            for _ in range(100):
+                with lock:
+                    jobs[f"k{i}"] = {"job_id": f"k{i}", "status": "queued"}
+                    jobs.pop(f"k{i}", None)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    def snap():
+        try:
+            for _ in range(100):
+                webapp._snapshot_jobs(jobs, lock)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=mutate, args=(i,)) for i in range(4)]
+    threads += [threading.Thread(target=snap) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=30)
+    assert errors == []
+
+
+def test_failed_job_keeps_message_in_active_list(tmp_path, monkeypatch):
+    from f1_reels import webapp
+    from f1_reels.alignment import Voiceover, WordTiming
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+
+    def fake_generate_voiceover(text, audio_path, **kwargs):
+        words = [WordTiming(text=w, start=0.0, end=0.1) for w in text.split()]
+        return Voiceover(words=words, duration=0.5)
+
+    def boom_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        raise RuntimeError("render exploded")
+
+    webapp.generate_voiceover = fake_generate_voiceover
+    webapp.edit_video = boom_edit_video
+    client = TestClient(app)
+    job_id = client.post("/api/jobs", data=_post_fields()).json()["job_id"]
+    status = _wait_status(client, job_id)
+    assert status["status"] == "error", status
+    payload = client.get("/api/jobs").json()
+    by_id = {j["job_id"]: j for j in payload["jobs"]}
+    assert by_id[job_id]["status"] == "error"
+    assert "render exploded" in by_id[job_id]["message"], by_id[job_id]
+    assert client.get("/api/reels").json() == {"reels": []}

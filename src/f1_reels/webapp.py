@@ -36,6 +36,26 @@ from .subtitles import SubtitleStyle, group_words_into_lines, render_line_clips
 
 logger = logging.getLogger(__name__)
 
+
+def _claim_running(jobs: dict, lock, job_id: str):
+    """Atomically transition a queued job to running.
+
+    Returns the record, or ``None`` when the job was deleted or is no
+    longer queued (so a delete racing worker startup always wins).
+    """
+    with lock:
+        record = jobs.get(job_id)
+        if record is None or record.get("status") != "queued":
+            return None
+        record["status"] = "running"
+        return record
+
+
+def _snapshot_jobs(jobs: dict, lock) -> list:
+    """Copy job records under the shared lock for safe iteration."""
+    with lock:
+        return [dict(record) for record in jobs.values()]
+
 # Serve .webp with the right type even on minimal Linux images.
 mimetypes.add_type("image/webp", ".webp")
 
@@ -204,6 +224,7 @@ def create_app(
     app.state.settings = settings
     job_queue: queue.Queue = queue.Queue()
     app.state.job_queue = job_queue
+    jobs_lock = threading.Lock()
     enqueue_seq = itertools.count(1)
 
     def _drain() -> None:
@@ -321,23 +342,23 @@ def create_app(
 
             raise HTTPException(status_code=400, detail="invalid seed")
 
-        jobs[job_id] = {
-            "job_id": job_id,
-            "status": "queued",
-            "message": "queued",
-            "name": reel_name,
-            "files": [],
-            "progress": 0,
-            "stage": "queued",
-            "queue_seq": next(enqueue_seq),
-        }
+        with jobs_lock:
+            jobs[job_id] = {
+                "job_id": job_id,
+                "status": "queued",
+                "message": "queued",
+                "name": reel_name,
+                "files": [],
+                "progress": 0,
+                "stage": "queued",
+                "queue_seq": next(enqueue_seq),
+            }
 
         def run_job() -> None:
-            record = jobs.get(job_id)
+            record = _claim_running(jobs, jobs_lock, job_id)
             if record is None:
                 # Deleted while queued: never render.
                 return
-            record["status"] = "running"
             record["message"] = "rendering"
 
             def on_progress(stage: str, pct: float) -> None:
@@ -467,13 +488,14 @@ def create_app(
     @app.get("/api/jobs")
     def list_jobs() -> dict[str, Any]:
         """Active (non-done) jobs: queued, running, or errored."""
+        records = _snapshot_jobs(jobs, jobs_lock)
         queued = sorted(
-            (r for r in jobs.values() if r.get("status") == "queued"),
+            (r for r in records if r.get("status") == "queued"),
             key=lambda r: r.get("queue_seq", 0),
         )
         positions = {r["job_id"]: i + 1 for i, r in enumerate(queued)}
         active = []
-        for record in jobs.values():
+        for record in records:
             if record.get("status") == "done":
                 continue
             active.append(
@@ -481,6 +503,7 @@ def create_app(
                     "job_id": record["job_id"],
                     "name": record.get("name", ""),
                     "status": record.get("status", ""),
+                    "message": record.get("message", ""),
                     "progress": record.get("progress", 0),
                     "stage": record.get("stage", ""),
                     "queue_position": positions.get(record["job_id"]),
@@ -602,13 +625,14 @@ def create_app(
 
         if not re.fullmatch(r"[0-9a-f]{32}", job_id or ""):
             raise HTTPException(status_code=404, detail="unknown job")
-        record = _record_for(job_id)
-        if record is None and (jobs_root / job_id).exists():
-            # Files without a finished render: still remove the job dir.
-            record = {"job_id": job_id}
-        if record is None:
-            raise HTTPException(status_code=404, detail="unknown job")
-        jobs.pop(job_id, None)
+        with jobs_lock:
+            record = _record_for(job_id)
+            if record is None and (jobs_root / job_id).exists():
+                # Files without a finished render: still remove the job dir.
+                record = {"job_id": job_id}
+            if record is None:
+                raise HTTPException(status_code=404, detail="unknown job")
+            jobs.pop(job_id, None)
         shutil.rmtree(jobs_root / job_id, ignore_errors=True)
         logger.info("Job %s deleted.", job_id)
         return {"deleted": job_id}
