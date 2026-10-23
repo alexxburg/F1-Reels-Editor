@@ -783,3 +783,120 @@ def test_dynamics_brand_subtitle_color(tmp_path, monkeypatch):
     assert webapp.brand_active_color("dynamics", settings) == (0xFF, 0x7E, 0x10, 255)
     assert webapp.brand_active_color("careers", settings) == settings.subtitle_active_color
     assert webapp.brand_active_color("", settings) == settings.subtitle_active_color
+
+
+def _wait_status(client, job_id, want=("done", "error"), timeout=30):
+    import time
+
+    end = time.time() + timeout
+    while time.time() < end:
+        r = client.get(f"/api/jobs/{job_id}")
+        if r.status_code == 200 and r.json()["status"] in want:
+            return r.json()
+        time.sleep(0.1)
+    raise AssertionError(f"job {job_id} not in {want} within {timeout}s")
+
+
+def test_queue_is_fifo_with_positions(tmp_path, monkeypatch):
+    import threading
+
+    app, webapp = _make_client(tmp_path, monkeypatch)
+    release = threading.Event()
+    completed = []
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        release.wait(timeout=30)
+        completed.append(name)
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    ids = [
+        client.post("/api/jobs", data=_post_fields(name=n)).json()["job_id"]
+        for n in ("ReelA", "ReelB", "ReelC")
+    ]
+    try:
+        assert client.get(f"/api/jobs/{ids[0]}").json()["status"] == "running"
+        assert client.get(f"/api/jobs/{ids[1]}").json()["status"] == "queued"
+        assert client.get(f"/api/jobs/{ids[2]}").json()["status"] == "queued"
+        active = {j["job_id"]: j for j in client.get("/api/jobs").json()["jobs"]}
+        assert active[ids[1]]["queue_position"] == 1, active
+        assert active[ids[2]]["queue_position"] == 2, active
+        assert active[ids[0]]["queue_position"] is None, active
+    finally:
+        release.set()
+    for job_id in ids:
+        _wait_status(client, job_id)
+    assert completed == ["ReelA", "ReelB", "ReelC"], completed
+
+
+def test_active_jobs_endpoint(tmp_path, monkeypatch):
+    import threading
+
+    app, webapp = _make_client(tmp_path, monkeypatch)
+    release = threading.Event()
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        release.wait(timeout=30)
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    first = client.post("/api/jobs", data=_post_fields(name="First")).json()["job_id"]
+    _wait_status(client, first, want=("running",))
+    second = client.post("/api/jobs", data=_post_fields(name="Second")).json()["job_id"]
+    try:
+        payload = client.get("/api/jobs").json()
+        assert set(payload.keys()) == {"jobs"}, payload
+        by_id = {j["job_id"]: j for j in payload["jobs"]}
+        assert set(by_id) == {first, second}, by_id
+        assert by_id[first]["status"] == "running"
+        assert by_id[first]["queue_position"] is None
+        assert by_id[second]["status"] == "queued"
+        assert by_id[second]["queue_position"] == 1
+        assert {"job_id", "name", "status", "progress", "stage", "queue_position"} <= set(
+            by_id[first]
+        )
+    finally:
+        release.set()
+    _wait_status(client, first)
+    _wait_status(client, second)
+    assert client.get("/api/jobs").json() == {"jobs": []}
+    names = [e["name"] for e in client.get("/api/reels").json()["reels"]]
+    assert {"First", "Second"} <= set(names)
+
+
+def test_delete_queued_job_never_renders(tmp_path, monkeypatch):
+    import threading
+
+    app, webapp = _make_client(tmp_path, monkeypatch)
+    release = threading.Event()
+    completed = []
+
+    def fake_edit_video(name, lines, font_path, tmp_dir, **kwargs):
+        release.wait(timeout=30)
+        completed.append(name)
+        config = kwargs.get("config")
+        out_dir = Path(config.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.mp4").write_bytes(b"fake-mp4")
+        return True
+
+    webapp.edit_video = fake_edit_video
+    client = TestClient(app)
+    first = client.post("/api/jobs", data=_post_fields(name="First")).json()["job_id"]
+    _wait_status(client, first, want=("running",))
+    second = client.post("/api/jobs", data=_post_fields(name="Second")).json()["job_id"]
+    assert client.delete(f"/api/jobs/{second}").status_code == 200
+    release.set()
+    _wait_status(client, first)
+    assert completed == ["First"], completed
+    assert client.get(f"/api/jobs/{second}").status_code == 404

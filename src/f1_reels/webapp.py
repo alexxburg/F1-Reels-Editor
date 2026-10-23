@@ -11,16 +11,19 @@ adapter and subtitle factories from :mod:`f1_reels.subtitles`.
 
 from __future__ import annotations
 
+import itertools
 import logging
 import mimetypes
 import os
+import queue
 import re
 import shutil
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import BackgroundTasks, FastAPI, Form
+from fastapi import FastAPI, Form
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -199,6 +202,24 @@ def create_app(
     app.state.jobs = jobs
     app.state.data_root = resolved_root
     app.state.settings = settings
+    job_queue: queue.Queue = queue.Queue()
+    app.state.job_queue = job_queue
+    enqueue_seq = itertools.count(1)
+
+    def _drain() -> None:
+        while True:
+            try:
+                fn = job_queue.get()
+            except Exception:
+                continue
+            try:
+                fn()
+            except Exception:
+                logger.exception("Queued render failed.")
+            finally:
+                job_queue.task_done()
+
+    threading.Thread(target=_drain, daemon=True, name="render-queue").start()
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -212,7 +233,6 @@ def create_app(
 
     @app.post("/api/jobs")
     async def create_job(
-        background_tasks: BackgroundTasks,
         name: str = Form(default=""),
         script_lines: str = Form(default=""),
         speed: str = Form(default=""),
@@ -309,10 +329,14 @@ def create_app(
             "files": [],
             "progress": 0,
             "stage": "queued",
+            "queue_seq": next(enqueue_seq),
         }
 
         def run_job() -> None:
-            record = jobs[job_id]
+            record = jobs.get(job_id)
+            if record is None:
+                # Deleted while queued: never render.
+                return
             record["status"] = "running"
             record["message"] = "rendering"
 
@@ -436,9 +460,34 @@ def create_app(
                 record["status"] = "error"
                 record["message"] = f"error: {exc}"[:500]
 
-        background_tasks.add_task(run_job)
+        job_queue.put(run_job)
         logger.info("Job %s queued for reel %s.", job_id, reel_name)
         return {"job_id": job_id}
+
+    @app.get("/api/jobs")
+    def list_jobs() -> dict[str, Any]:
+        """Active (non-done) jobs: queued, running, or errored."""
+        queued = sorted(
+            (r for r in jobs.values() if r.get("status") == "queued"),
+            key=lambda r: r.get("queue_seq", 0),
+        )
+        positions = {r["job_id"]: i + 1 for i, r in enumerate(queued)}
+        active = []
+        for record in jobs.values():
+            if record.get("status") == "done":
+                continue
+            active.append(
+                {
+                    "job_id": record["job_id"],
+                    "name": record.get("name", ""),
+                    "status": record.get("status", ""),
+                    "progress": record.get("progress", 0),
+                    "stage": record.get("stage", ""),
+                    "queue_position": positions.get(record["job_id"]),
+                }
+            )
+        active.sort(key=lambda e: e["job_id"])
+        return {"jobs": active}
 
     @app.get("/api/reels")
     def list_reels() -> dict[str, Any]:
