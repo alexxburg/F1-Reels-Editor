@@ -105,7 +105,7 @@ def test_create_job_and_download_with_fakes(tmp_path, monkeypatch):
     r = client.post("/api/jobs", data=_post_fields())
     assert r.status_code == 200, r.text
     job_id = r.json()["job_id"]
-    status = client.get(f"/api/jobs/{job_id}").json()
+    status = _wait_status(client, job_id)
     assert status["status"] == "done", status
     dl = client.get(f"/api/jobs/{job_id}/download")
     assert dl.status_code == 200
@@ -151,7 +151,7 @@ def test_delete_job_removes_files_and_record(tmp_path, monkeypatch):
     webapp.edit_video = fake_edit_video
     client = TestClient(app)
     job_id = client.post("/api/jobs", data=_post_fields()).json()["job_id"]
-    assert client.get(f"/api/jobs/{job_id}").json()["status"] == "done"
+    assert _wait_status(client, job_id)["status"] == "done"
     mp4 = tmp_path / "data" / "jobs" / job_id / "outputs" / "TestReel.mp4"
     assert mp4.exists()
     r = client.delete(f"/api/jobs/{job_id}")
@@ -181,6 +181,7 @@ def test_endpoints_survive_restart_from_disk(tmp_path, monkeypatch):
     webapp.edit_video = fake_edit_video
     client = TestClient(app)
     job_id = client.post("/api/jobs", data=_post_fields()).json()["job_id"]
+    _wait_status(client, job_id)
     # Simulate a container restart: in-memory records are gone, files remain.
     app.state.jobs.clear()
     status = client.get(f"/api/jobs/{job_id}")
@@ -454,6 +455,7 @@ def test_api_reels_lists_done_job(tmp_path, monkeypatch):
     assert r.status_code == 200, r.text
     job_id = r.json()["job_id"]
     # Filesystem scan must survive restarts: drop the in-memory record.
+    _wait_status(client, job_id)
     app.state.jobs.clear()
     r = client.get("/api/reels")
     assert r.status_code == 200, r.text
@@ -645,7 +647,7 @@ def test_finished_job_reports_progress_100(tmp_path, monkeypatch):
     webapp.edit_video = fake_edit_video
     client = TestClient(app)
     job_id = client.post("/api/jobs", data=_post_fields()).json()["job_id"]
-    status = client.get(f"/api/jobs/{job_id}").json()
+    status = _wait_status(client, job_id)
     assert status["status"] == "done", status
     assert status["progress"] == 100
     assert status["stage"] == "finalize"
@@ -681,7 +683,7 @@ def test_job_uses_configured_voice_direction(tmp_path, monkeypatch):
     r = client.post("/api/jobs", data=_post_fields())
     assert r.status_code == 200, r.text
     job_id = r.json()["job_id"]
-    status = client.get(f"/api/jobs/{job_id}").json()
+    status = _wait_status(client, job_id)
     assert status["status"] == "done", status
     assert captured.get("generate_instructions") == custom
     assert captured.get("edit_instructions") == custom
@@ -718,7 +720,7 @@ def test_job_uses_default_voice_direction(tmp_path, monkeypatch):
     r = client.post("/api/jobs", data=_post_fields())
     assert r.status_code == 200, r.text
     job_id = r.json()["job_id"]
-    status = client.get(f"/api/jobs/{job_id}").json()
+    status = _wait_status(client, job_id)
     assert status["status"] == "done", status
     assert captured.get("generate_instructions") == expected
     assert captured.get("edit_instructions") == expected
@@ -763,11 +765,13 @@ def test_brand_toggle_form_and_behavior(tmp_path, monkeypatch):
     # Default (no brand field) renders with the configured Careers logo.
     r = client.post("/api/jobs", data=_post_fields())
     assert r.status_code == 200, r.text
+    _wait_status(client, r.json()["job_id"])
     assert captured["logo_path"] == str(app.state.settings.endcard_logo), captured
     # Dynamics brand renders with the bundled RD logo.
     fields = _post_fields(brand="dynamics")
     r = client.post("/api/jobs", data=fields)
     assert r.status_code == 200, r.text
+    _wait_status(client, r.json()["job_id"])
     assert captured["logo_path"].endswith("RD-Logo-White-Full.png"), captured
     # Unknown brands are rejected like other invalid inputs.
     r = client.post("/api/jobs", data=_post_fields(brand="nope"))
