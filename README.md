@@ -62,8 +62,11 @@ Open `http://<lan-ip>:8081` from any device on your LAN
    margin, and seed. (The API key comes only from `.env`; bricks,
    voice/model, the endcard logo, and the subtitle font come only
    from `config.json`.)
-2. Submit to queue the render; the page polls job status.
-3. Download `<name>.mp4` and `<name>.srt` when done.
+2. Queue the render with Queue; the form resets for the next reel
+   while it renders in the background (one at a time, FIFO).
+3. Watch live progress in Windows Explorer — My Reels; download
+   `<name>.mp4` and `<name>.srt` from finished rows (in-progress
+   rows are not downloadable).
 
 Job data persists in `./data` (mounted as `/app/data`; override with `DATA_ROOT`).
 `./config.json` is mounted read-only as `/app/config.json`
