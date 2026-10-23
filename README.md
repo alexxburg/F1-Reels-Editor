@@ -55,8 +55,8 @@ cp .env.example .env   # then set OPENROUTER_API_KEY in .env
 docker compose up --build
 ```
 
-Open `http://<lan-ip>:8081` from any device on your LAN
-(use `http://localhost:8081` on the host).
+Open `http://<lan-ip>:8082` from any device on your LAN
+(use `http://localhost:8082` on the host).
 
 1. Fill the form: reel name, script lines, voice direction, speed,
    margin, and seed. (The API key comes only from `.env`; bricks,

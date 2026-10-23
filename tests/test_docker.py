@@ -14,7 +14,7 @@ def test_docker_files_publish_lan_port_with_ffmpeg():
     assert "f1_reels.webapp" in dockerfile
 
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
-    assert "8081:8081" in compose
+    assert "8082:8081" in compose
     assert "/app/data" in compose or "data" in compose
 
 
@@ -37,5 +37,5 @@ def test_moviepy_stack_pinned_compatible():
 def test_readme_documents_lan_webapp():
     readme = Path("README.md").read_text(encoding="utf-8")
     assert "docker compose up --build" in readme
-    assert "8081" in readme
+    assert "8082" in readme
     assert "OPENROUTER_API_KEY" in readme
