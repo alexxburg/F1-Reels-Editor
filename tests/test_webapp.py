@@ -244,9 +244,7 @@ def test_index_form_new_contract(tmp_path, monkeypatch):
         'name="font"',
     ):
         assert removed not in html, removed
-    assert 'id="download"' in html
     assert 'id="download-srt"' not in html
-    assert ">Download</a>" in html
     assert "/api/jobs" in html
     # Speed is a slider (0.5x-2x) with a live readout.
     assert 'type="range"' in html
@@ -282,10 +280,8 @@ def test_index_polished_structure(tmp_path, monkeypatch):
         assert f'id="{target}"' in html, target
     assert 'name="voice_direction"' not in html
     assert 'id="voice_direction"' not in html
-    # Status tray panel + single download action + app script.
+    # Status tray panel + app script (queue progress lives in Explorer).
     assert 'id="status"' in html
-    assert 'id="download"' in html
-    assert ">Download</a>" in html
     assert 'id="download-srt"' not in html
     assert '<script src="/static/app.js"></script>' in html
     # Empty data-URI favicon silences /favicon.ico 404s on LAN.
@@ -501,7 +497,6 @@ def test_desktop_chrome(tmp_path, monkeypatch):
         'id="speed-value"',
         'id="random-seed"',
         'id="status"',
-        'id="download"',
     ):
         assert did in html, did
     assert 'id="download-srt"' not in html
@@ -726,20 +721,17 @@ def test_job_uses_default_voice_direction(tmp_path, monkeypatch):
     assert captured.get("edit_instructions") == expected
 
 
-def test_progress_markup_and_assets(tmp_path, monkeypatch):
+def test_generator_queue_resets_without_private_progress(tmp_path, monkeypatch):
     app, _ = _make_client(tmp_path, monkeypatch)
     client = TestClient(app)
     html = client.get("/").text
-    assert 'id="progress"' in html
-    assert "xp-progress" in html
-    assert "xp-progress-fill" in html
+    assert ">Queue<" in html and ">Render<" not in html
+    assert 'id="progress"' not in html and 'id="download"' not in html
     js = client.get("/static/app.js").text
-    assert "job.progress" in js
-    assert "xp-progress-fill" in js
+    assert "clearInterval" not in js
+    assert "job.progress" not in js
     css = client.get("/static/style.css").text
-    assert "xp-progress" in css
-    assert "repeating-linear-gradient" in css
-    assert "3c9e3c" in css.lower()
+    assert "xp-progress" not in css
 
 
 def test_brand_toggle_form_and_behavior(tmp_path, monkeypatch):

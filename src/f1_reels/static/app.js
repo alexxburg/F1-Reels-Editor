@@ -27,9 +27,6 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   event.preventDefault();
   const form = event.target;
   const status = document.getElementById("status");
-  const download = document.getElementById("download");
-  const progress = document.getElementById("progress");
-  const fill = progress ? progress.querySelector(".xp-progress-fill") : null;
   const submitButton = form.querySelector('button[type="submit"]');
   const setStatus = (text, state) => {
     status.textContent = text;
@@ -43,10 +40,6 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   if (submitButton) {
     submitButton.disabled = true;
   }
-  download.hidden = true;
-  if (progress) {
-    progress.hidden = true;
-  }
   const response = await fetch("/api/jobs", {
     method: "POST",
     body: new FormData(form),
@@ -59,45 +52,13 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     return;
   }
   const payload = await response.json();
-  const jobId = payload.job_id;
-  setStatus("queued: " + jobId, "queued");
-  const poll = setInterval(async () => {
-    const res = await fetch(`/api/jobs/${jobId}`);
-    if (!res.ok) {
-      setStatus("poll failed: " + res.status, "error");
-      if (progress) {
-        progress.hidden = true;
-      }
-      clearInterval(poll);
-      if (submitButton) {
-        submitButton.disabled = false;
-      }
-      return;
-    }
-    const job = await res.json();
-    setStatus(`${job.status}: ${job.message}`, job.status);
-    if (progress && fill) {
-      if (typeof job.progress === "number" && job.status !== "done" && job.status !== "error") {
-        progress.hidden = false;
-        fill.style.width = `${Math.max(0, Math.min(100, job.progress))}%`;
-      } else {
-        progress.hidden = true;
-      }
-    }
-    if (job.status === "done") {
-      clearInterval(poll);
-      download.href = `/api/jobs/${jobId}/download`;
-      download.hidden = false;
-      if (submitButton) {
-        submitButton.disabled = false;
-      }
-    } else if (job.status === "error") {
-      clearInterval(poll);
-      if (submitButton) {
-        submitButton.disabled = false;
-      }
-    }
-  }, 1000);
+  // Handed to the background queue: reset the generator for the next reel.
+  // Progress and downloads live in the Windows Explorer window.
+  form.reset();
+  setStatus("queued: " + payload.job_id, "queued");
+  if (submitButton) {
+    submitButton.disabled = false;
+  }
 });
 
 // XP desktop: clock, start menu, window toggles, explorer. Existing
