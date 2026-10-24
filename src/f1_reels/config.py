@@ -17,6 +17,7 @@ ALLOWED_CONFIG_KEYS: frozenset[str] = frozenset(
     {
         "openrouter_model",
         "openrouter_voice",
+        "openrouter_footer_model",
         "voice_direction",
         "bricks_dir",
         "endcard_logo",
@@ -196,6 +197,7 @@ class Settings:
 
     openrouter_api_key: str = ""
     openrouter_tts_model: str = "google/gemini-3.8-flash-tts"
+    openrouter_footer_model: str = "meta/muse-spark-1.3-contributor"
     openrouter_voice: str = "Puck"
     voice_direction: str = (
         "[Young British professional, mid-20s, contemporary Southern English accent, "
@@ -371,6 +373,11 @@ class Settings:
                 if "openrouter_voice" in mapping
                 else defaults.openrouter_voice
             ),
+            openrouter_footer_model=(
+                str(mapping["openrouter_footer_model"])
+                if "openrouter_footer_model" in mapping
+                else defaults.openrouter_footer_model
+            ),
             voice_direction=(
                 str(mapping["voice_direction"])
                 if "voice_direction" in mapping
@@ -457,6 +464,9 @@ class Settings:
                 "OPENROUTER_TTS_MODEL", "google/gemini-3.8-flash-tts"
             ),
             openrouter_voice=_get_str("OPENROUTER_VOICE", "Puck"),
+        openrouter_footer_model=_get_str(
+            "OPENROUTER_FOOTER_MODEL", "meta/muse-spark-1.3-contributor"
+        ),
             voice_direction=_get_str(
                 "VOICE_DIRECTION",
                 "[Young British professional, mid-20s, contemporary Southern English accent, "

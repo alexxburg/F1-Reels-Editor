@@ -30,6 +30,7 @@ from fastapi.staticfiles import StaticFiles
 from .alignment import generate_voiceover as _generate_voiceover_impl
 from .config import Settings, _default_project_root, load_config_file
 from .endcard import EndcardConfig
+from .footer import generate_footer as _generate_footer_impl
 from .pipeline import PipelineConfig
 from .pipeline import edit_video as _edit_video_impl
 from .subtitles import SubtitleStyle, group_words_into_lines, render_line_clips
@@ -82,6 +83,7 @@ def brand_active_color(brand_key: str, settings) -> tuple[int, int, int, int]:
 # Module-level aliases so tests can monkeypatch ``webapp.edit_video`` or
 # ``webapp.generate_voiceover`` to avoid network/moviepy work.
 edit_video = _edit_video_impl
+generate_footer = _generate_footer_impl
 generate_voiceover = _generate_voiceover_impl
 
 PLACEHOLDER_HTML = """<!doctype html>
@@ -511,6 +513,32 @@ def create_app(
             )
         active.sort(key=lambda e: e["job_id"])
         return {"jobs": active}
+
+    @app.post("/api/footer")
+    async def create_footer(
+        script_lines: str = Form(default=""),
+    ) -> dict[str, str]:
+        lines = [line.strip() for line in script_lines.splitlines() if line.strip()]
+        if not lines:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="empty script")
+        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+        if not api_key:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="missing OpenRouter API key")
+        try:
+            footer = generate_footer(
+                "\n".join(lines),
+                api_key=api_key,
+                model=settings.openrouter_footer_model,
+            )
+        except RuntimeError as exc:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=502, detail=f"footer failed: {exc}")
+        return {"footer": footer}
 
     @app.get("/api/reels")
     def list_reels() -> dict[str, Any]:

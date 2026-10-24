@@ -1012,3 +1012,69 @@ def test_failed_job_keeps_message_in_active_list(tmp_path, monkeypatch):
     assert by_id[job_id]["status"] == "error"
     assert "render exploded" in by_id[job_id]["message"], by_id[job_id]
     assert client.get("/api/reels").json() == {"reels": []}
+
+
+def test_footer_endpoint_requires_key_and_script(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    r = client.post("/api/footer", data={"script_lines": "hello"})
+    assert r.status_code == 400, r.text
+    assert "key" in r.text.lower()
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    r = client.post("/api/footer", data={"script_lines": "   "})
+    assert r.status_code == 400, r.text
+
+
+def test_footer_endpoint_returns_generated_caption(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    seen = {}
+
+    def fake_footer(script_text, *, api_key, model):
+        seen["script"] = script_text
+        seen["key"] = api_key
+        seen["model"] = model
+        return "Hook line\n#one #two #three #four #five"
+
+    monkeypatch.setattr(webapp, "generate_footer", fake_footer)
+    client = TestClient(app)
+    r = client.post("/api/footer", data={"script_lines": "fastest lap ever"})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"footer": "Hook line\n#one #two #three #four #five"}
+    assert seen["script"] == "fastest lap ever"
+    assert seen["model"] == "meta/muse-spark-1.3-contributor"
+
+
+def test_footer_endpoint_reports_upstream_failure(tmp_path, monkeypatch):
+    from f1_reels import webapp
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("upstream down")
+
+    monkeypatch.setattr(webapp, "generate_footer", boom)
+    client = TestClient(app)
+    r = client.post("/api/footer", data={"script_lines": "hello"})
+    assert r.status_code == 502, r.text
+
+
+def test_footer_form_contract(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    html = client.get("/").text
+    assert 'id="footer-text"' in html
+    assert "readonly" in html.split('id="footer-text"')[1].split(">")[0]
+    assert 'id="footer-copy"' in html
+    assert 'id="footer-regenerate"' in html
+    assert ">Copy<" in html and ">Regenerate<" in html
+    js = client.get("/static/app.js").text
+    assert "/api/footer" in js
+    assert "3000" in js
+    assert "clipboard" in js

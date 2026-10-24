@@ -23,6 +23,72 @@ if (randomSeedButton) {
     seedInput.value = String(buf[0] % 2147483648);
   });
 }
+const scriptInput = document.getElementById("script_lines");
+const footerText = document.getElementById("footer-text");
+const footerCopy = document.getElementById("footer-copy");
+const footerRegen = document.getElementById("footer-regenerate");
+const footerHint = document.getElementById("footer-hint");
+const footerDefaultHint = "Caption for social uploads. Regenerates 3s after you stop editing.";
+if (scriptInput && footerText && footerCopy && footerRegen) {
+  let footerTimer = null;
+  let footerBusy = false;
+  const scheduleFooter = () => {
+    if (footerTimer !== null) {
+      clearTimeout(footerTimer);
+    }
+    footerTimer = setTimeout(generateFooter, 3000);
+  };
+  async function generateFooter() {
+    const script = scriptInput.value;
+    if (!script.trim()) {
+      return;
+    }
+    if (footerBusy) {
+      scheduleFooter();
+      return;
+    }
+    footerBusy = true;
+    if (footerHint) {
+      footerHint.textContent = "Generating caption...";
+    }
+    try {
+      const body = new FormData();
+      body.append("script_lines", script);
+      const res = await fetch("/api/footer", { method: "POST", body });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const payload = await res.json();
+      footerText.value = payload.footer || "";
+      if (footerHint) {
+        footerHint.textContent = footerDefaultHint;
+      }
+    } catch (err) {
+      if (footerHint) {
+        footerHint.textContent = `Caption failed: ${(err && err.message) || err}`;
+      }
+    } finally {
+      footerBusy = false;
+    }
+  }
+  scriptInput.addEventListener("input", scheduleFooter);
+  footerRegen.addEventListener("click", generateFooter);
+  footerCopy.addEventListener("click", async () => {
+    const text = footerText.value;
+    if (!text) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_) {
+      footerText.select();
+      document.execCommand("copy");
+    }
+    if (footerHint) {
+      footerHint.textContent = "Copied to clipboard.";
+    }
+  });
+}
 document.getElementById("reel-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;

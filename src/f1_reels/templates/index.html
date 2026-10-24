@@ -34,6 +34,15 @@
 <textarea id="script_lines" name="script_lines" aria-describedby="script-hint"></textarea>
 <p class="hint" id="script-hint">One line per beat. Blank lines are ignored.</p>
 </div>
+<div class="field">
+<label for="footer-text">Social footer</label>
+<textarea id="footer-text" readonly aria-describedby="footer-hint" placeholder="Auto-generated hook + hashtags appear here."></textarea>
+<div class="footer-row">
+<button type="button" id="footer-copy" class="btn btn-secondary">Copy</button>
+<button type="button" id="footer-regenerate" class="btn btn-secondary">Regenerate</button>
+</div>
+<p class="hint" id="footer-hint" role="status">Caption for social uploads. Regenerates 3s after you stop editing.</p>
+</div>
 </fieldset>
 <fieldset>
 <legend>Voice</legend>

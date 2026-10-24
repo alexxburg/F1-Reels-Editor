@@ -270,6 +270,20 @@ input[type="range"]::-moz-range-track {
 }
 .seed-row input { flex: 1; min-width: 0; }
 
+/* Social footer: readonly output plus Copy / Regenerate actions. */
+#footer-text[readonly] {
+  background: var(--xp-tray-bg);
+  color: var(--xp-text-dim);
+  min-height: 3.5rem;
+}
+.footer-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+.footer-row .btn { flex: 1 1 auto; }
+
 /* Output row: Margin, Seed, Brand share one horizontal line on desktop,
    stacking vertically on narrow screens. */
 .output-row {
