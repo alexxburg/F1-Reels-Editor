@@ -197,7 +197,7 @@ class Settings:
 
     openrouter_api_key: str = ""
     openrouter_tts_model: str = "google/gemini-3.8-flash-tts"
-    openrouter_footer_model: str = "meta/muse-spark-1.3-contributor"
+    openrouter_footer_model: str = "@preset/xp-prompt"
     openrouter_voice: str = "Puck"
     voice_direction: str = (
         "[Young British professional, mid-20s, contemporary Southern English accent, "
@@ -465,7 +465,7 @@ class Settings:
             ),
             openrouter_voice=_get_str("OPENROUTER_VOICE", "Puck"),
         openrouter_footer_model=_get_str(
-            "OPENROUTER_FOOTER_MODEL", "meta/muse-spark-1.3-contributor"
+            "OPENROUTER_FOOTER_MODEL", "@preset/xp-prompt"
         ),
             voice_direction=_get_str(
                 "VOICE_DIRECTION",

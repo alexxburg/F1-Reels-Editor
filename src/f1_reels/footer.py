@@ -14,7 +14,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
-FOOTER_MODEL_DEFAULT = "meta/muse-spark-1.3-contributor"
+FOOTER_MODEL_DEFAULT = "@preset/xp-prompt"
 FOOTER_REASONING_EFFORT = "medium"
 # Reasoning tokens share the max_tokens budget (medium effort can spend
 # ~900 tokens thinking), so the ceiling must stay far above the ~150-token

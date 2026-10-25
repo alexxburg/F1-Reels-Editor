@@ -1047,7 +1047,7 @@ def test_footer_endpoint_returns_generated_caption(tmp_path, monkeypatch):
     assert r.status_code == 200, r.text
     assert r.json() == {"footer": "Hook line\n#one #two #three #four #five"}
     assert seen["script"] == "fastest lap ever"
-    assert seen["model"] == "meta/muse-spark-1.3-contributor"
+    assert seen["model"] == "@preset/xp-prompt"
 
 
 def test_footer_endpoint_reports_upstream_failure(tmp_path, monkeypatch):
