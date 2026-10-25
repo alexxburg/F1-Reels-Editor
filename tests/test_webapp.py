@@ -1076,5 +1076,6 @@ def test_footer_form_contract(tmp_path, monkeypatch):
     assert ">Copy<" in html and ">Regenerate<" in html
     js = client.get("/static/app.js").text
     assert "/api/footer" in js
-    assert "3000" in js
+    assert "setTimeout(generateFooter, 1000)" in js
+    assert "3000" not in js
     assert "clipboard" in js

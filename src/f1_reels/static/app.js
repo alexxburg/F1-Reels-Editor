@@ -28,7 +28,7 @@ const footerText = document.getElementById("footer-text");
 const footerCopy = document.getElementById("footer-copy");
 const footerRegen = document.getElementById("footer-regenerate");
 const footerHint = document.getElementById("footer-hint");
-const footerDefaultHint = "Caption for social uploads. Regenerates 3s after you stop editing.";
+const footerDefaultHint = "Caption for social uploads. Regenerates 1s after you stop editing.";
 if (scriptInput && footerText && footerCopy && footerRegen) {
   let footerTimer = null;
   let footerBusy = false;
@@ -36,7 +36,7 @@ if (scriptInput && footerText && footerCopy && footerRegen) {
     if (footerTimer !== null) {
       clearTimeout(footerTimer);
     }
-    footerTimer = setTimeout(generateFooter, 3000);
+    footerTimer = setTimeout(generateFooter, 1000);
   };
   async function generateFooter() {
     const script = scriptInput.value;
