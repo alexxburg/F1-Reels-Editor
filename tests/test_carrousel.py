@@ -129,3 +129,38 @@ def test_is_auth_error_matches_only_auth_failures():
     assert db.is_auth_error(Exception("FATAL: password authentication failed"))
     assert not db.is_auth_error(Exception("syntax error at end of input"))
     assert not db.is_auth_error(Exception("connection refused"))
+
+
+def test_render_produces_1500x1500_png():
+    import io
+
+    from f1_reels.carrousel import render as render_mod
+
+    img = render_mod.render_single(
+        (
+            1,
+            "SENIOR AERODYNAMICIST",
+            "red_bull_racing",
+            None,
+            "Full-time",
+            "Milton Keynes",
+            "https://x",
+        )
+    )
+    assert img.size == (1500, 1500) and img.mode == "RGB"
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    assert buf.getvalue()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_team_display_fallback_renders_text():
+    import numpy as np
+
+    from f1_reels.carrousel import render as render_mod
+
+    img = render_mod.render_single(
+        (2, "WIND TUNNEL TECH", "brand_new_team", None, "Full-time", "Nowhere", "https://x")
+    )
+    assert img.size == (1500, 1500)
+    px = np.asarray(img)
+    assert (px.mean(axis=2) > 200).mean() > 0.005
