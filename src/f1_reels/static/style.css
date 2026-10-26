@@ -804,6 +804,128 @@ output:focus-visible {
   background: repeating-linear-gradient(to right, #3c9e3c 0 10px, #ffffff 10px 12px);
 }
 
+/* Job Carrousel: filter bar, checkbox table, preview grid. XP tokens. */
+.car-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.car-tabs .btn[aria-selected="true"] {
+  border-style: inset;
+}
+
+.car-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.car-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+
+.car-field input,
+.car-field select {
+  width: 100%;
+  padding: 0.4rem 0.45rem;
+  border-radius: 0;
+  border: 2px inset #d4d0c8;
+  background: var(--xp-inset-bg);
+  color: var(--xp-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+#car-count {
+  margin: 0 0 0.4rem;
+}
+
+.car-table {
+  background: #ffffff;
+  border: 2px inset #d4d0c8;
+  min-height: 120px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.car-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  border-bottom: 1px dotted #d4d0c8;
+  align-items: center;
+  min-width: 560px;
+}
+
+.car-row:hover {
+  background: #316ac5;
+  color: #fff;
+}
+
+.car-row:hover a { color: #fff; }
+
+.car-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.car-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  color: var(--xp-text-dim);
+}
+
+.car-row:hover .car-cell { color: #fff; }
+
+.car-empty {
+  padding: 1rem 0.75rem;
+  color: var(--xp-text-dim);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.car-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.car-actions .btn { flex: 1 1 auto; }
+
+.car-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 2px inset #d4d0c8;
+  padding: 0.5rem;
+  min-height: 120px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.car-results img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #aca899;
+}
+
 .reel-row .reel-download {
   padding: 0.15rem 0.5rem;
   font-size: 0.8rem;

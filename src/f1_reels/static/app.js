@@ -419,6 +419,256 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     });
   }
 
+  // Job Carrousel: live F1 jobs board with PNG card rendering.
+  const carSelected = new Set();
+
+  function carShowTab(name) {
+    const search = document.getElementById("car-pane-search");
+    const results = document.getElementById("car-pane-results");
+    const tabSearch = document.getElementById("car-tab-search");
+    const tabResults = document.getElementById("car-tab-results");
+    const showSearch = name !== "results";
+    if (search) {
+      search.hidden = !showSearch;
+    }
+    if (results) {
+      results.hidden = showSearch;
+    }
+    if (tabSearch) {
+      tabSearch.setAttribute("aria-selected", String(showSearch));
+    }
+    if (tabResults) {
+      tabResults.setAttribute("aria-selected", String(!showSearch));
+    }
+  }
+
+  function carFillSelect(id, values) {
+    const sel = document.getElementById(id);
+    if (!sel) {
+      return;
+    }
+    const keep = sel.value;
+    sel.querySelectorAll("option:not([value=''])").forEach((opt) => opt.remove());
+    values.forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      sel.appendChild(opt);
+    });
+    if ([...sel.options].some((opt) => opt.value === keep)) {
+      sel.value = keep;
+    }
+  }
+
+  function carFieldValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : "";
+  }
+
+  async function loadCarrousel() {
+    const list = document.getElementById("car-list");
+    const count = document.getElementById("car-count");
+    if (!list) {
+      return;
+    }
+    let jobs = [];
+    let err = "";
+    try {
+      const q = new URLSearchParams({
+        search: carFieldValue("car-search"),
+        team: carFieldValue("car-team"),
+        location: carFieldValue("car-location"),
+        type: carFieldValue("car-type"),
+      });
+      const res = await fetch(`/api/carrousel/jobs?${q}`);
+      if (!res.ok) {
+        const text = await res.text();
+        let detail = text;
+        try {
+          const body = JSON.parse(text);
+          if (body && body.error) {
+            detail = body.error;
+          }
+        } catch (_) {
+          /* keep raw text */
+        }
+        throw new Error(detail.slice(0, 200));
+      }
+      const payload = await res.json();
+      if (Array.isArray(payload)) {
+        jobs = payload;
+      } else if (payload && Array.isArray(payload.jobs)) {
+        jobs = payload.jobs;
+      }
+    } catch (e) {
+      err = (e && e.message) || String(e);
+      jobs = [];
+    }
+    try {
+      const res = await fetch("/api/carrousel/filters");
+      if (res.ok) {
+        const filters = await res.json();
+        carFillSelect("car-team", filters.teams || []);
+        carFillSelect("car-location", filters.locations || []);
+        carFillSelect("car-type", filters.types || []);
+      }
+    } catch (_) {
+      /* filters are best-effort; jobs carry the error message */
+    }
+    list.querySelectorAll(".car-row, .car-empty").forEach((node) => node.remove());
+    if (err) {
+      const p = document.createElement("p");
+      p.className = "car-empty";
+      p.textContent = `Could not load jobs: ${err}`;
+      list.appendChild(p);
+    } else if (!jobs.length) {
+      const p = document.createElement("p");
+      p.className = "car-empty";
+      p.textContent = "No live jobs match the current filters.";
+      list.appendChild(p);
+    } else {
+      jobs.forEach((job) => {
+        const row = document.createElement("div");
+        row.className = "car-row";
+        row.setAttribute("role", "row");
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.value = String(job.job_id);
+        check.checked = carSelected.has(String(job.job_id));
+        check.setAttribute("aria-label", `Select ${job.title || job.job_id}`);
+        check.addEventListener("change", () => {
+          if (check.checked) {
+            carSelected.add(String(job.job_id));
+          } else {
+            carSelected.delete(String(job.job_id));
+          }
+        });
+        row.appendChild(check);
+        const title = document.createElement("span");
+        title.className = "car-title";
+        title.textContent = job.title || "";
+        title.title = job.title || "";
+        row.appendChild(title);
+        ["team", "location", "type"].forEach((key) => {
+          const cell = document.createElement("span");
+          cell.className = "car-cell";
+          cell.textContent = job[key] || "";
+          row.appendChild(cell);
+        });
+        const linkCell = document.createElement("span");
+        linkCell.className = "car-cell";
+        if (job.link) {
+          const anchor = document.createElement("a");
+          anchor.href = job.link;
+          anchor.textContent = "Open";
+          anchor.target = "_blank";
+          anchor.rel = "noopener";
+          linkCell.appendChild(anchor);
+        }
+        row.appendChild(linkCell);
+        list.appendChild(row);
+      });
+    }
+    if (count) {
+      count.textContent = err ? "" : `${jobs.length} jobs`;
+    }
+  }
+
+  function carCheckedIds() {
+    return [...carSelected]
+      .map((value) => Number(value))
+      .filter((n) => Number.isInteger(n));
+  }
+
+  async function carPreview() {
+    const ids = carCheckedIds();
+    if (!ids.length) {
+      alert("Select at least one job.");
+      return;
+    }
+    if (ids.length > 24) {
+      alert("Select at most 24 jobs.");
+      return;
+    }
+    const res = await fetch("/api/carrousel/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) {
+      alert(`Preview failed: ${res.status}`);
+      return;
+    }
+    const payload = await res.json();
+    const box = document.getElementById("car-results");
+    if (!box) {
+      return;
+    }
+    box.querySelectorAll("img").forEach((node) => node.remove());
+    (payload.images || []).forEach((image) => {
+      const pic = document.createElement("img");
+      pic.src = image.url;
+      pic.alt = `Job ${image.job_id}`;
+      pic.loading = "lazy";
+      box.appendChild(pic);
+    });
+    carShowTab("results");
+  }
+
+  async function carZip() {
+    const ids = carCheckedIds();
+    if (!ids.length) {
+      alert("No images to download.");
+      return;
+    }
+    const query = ids.join(",");
+    const res = await fetch(`/api/carrousel/images.zip?ids=${encodeURIComponent(query)}`);
+    if (!res.ok) {
+      alert(`Zip failed: ${res.status}`);
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "carrousel.zip";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  const carRefresh = document.getElementById("carrousel-refresh");
+  if (carRefresh) {
+    carRefresh.addEventListener("click", loadCarrousel);
+  }
+  const carTabSearch = document.getElementById("car-tab-search");
+  if (carTabSearch) {
+    carTabSearch.addEventListener("click", () => carShowTab("search"));
+  }
+  const carTabResults = document.getElementById("car-tab-results");
+  if (carTabResults) {
+    carTabResults.addEventListener("click", () => carShowTab("results"));
+  }
+  const carBack = document.getElementById("car-back");
+  if (carBack) {
+    carBack.addEventListener("click", () => carShowTab("search"));
+  }
+  const carPreviewBtn = document.getElementById("car-preview");
+  if (carPreviewBtn) {
+    carPreviewBtn.addEventListener("click", carPreview);
+  }
+  const carZipBtn = document.getElementById("car-zip");
+  if (carZipBtn) {
+    carZipBtn.addEventListener("click", carZip);
+  }
+  ["car-search", "car-team", "car-location", "car-type"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener(el.tagName === "SELECT" ? "change" : "input", loadCarrousel);
+    }
+  });
+
   const refresh = document.getElementById("explorer-refresh");
   if (refresh) {
     refresh.addEventListener("click", loadReels);
@@ -444,7 +694,7 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     if (!target) {
       return;
     }
-    ["win-generator", "win-explorer"].forEach((wid) => {
+    ["win-generator", "win-explorer", "win-carrousel"].forEach((wid) => {
       const w = document.getElementById(wid);
       if (!w) {
         return;
@@ -457,6 +707,9 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       startExplorerPoll();
     } else {
       stopExplorerPoll();
+      if (id === "win-carrousel") {
+        loadCarrousel();
+      }
     }
     closeMenu();
   }
@@ -466,7 +719,7 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
   if (logoffBtn) {
     logoffBtn.addEventListener("click", (event) => {
       event.stopPropagation();
-      ["win-generator", "win-explorer"].forEach((wid) => {
+      ["win-generator", "win-explorer", "win-carrousel"].forEach((wid) => {
         const w = document.getElementById(wid);
         if (w) {
           w.hidden = true;

@@ -563,12 +563,12 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert ".desk-icon" not in css
     assert "#desktop-icons" not in css
     taskbar = html.split('id="task-buttons"')[1].split('id="tray-clock"')[0]
-    assert taskbar.count("<svg") >= 1, taskbar[:200]
+    assert taskbar.count("<svg") >= 2, taskbar[:200]
     assert "videos-folder-icon.png" in taskbar
     # Two-column menu nests divs, so slice to the taskbar footer instead of
     # the first inner </div> (old single-column assumption).
     menu = html.split('id="start-menu"')[1].split('<footer id="taskbar"')[0]
-    assert menu.count("<svg") >= 2, menu[:200]
+    assert menu.count("<svg") >= 3, menu[:200]
     # Windows flag image on the start button (bundled locally, user-supplied).
     start_btn = html.split('id="start-btn"')[1].split("</button>")[0]
     assert "start-xp.webp" in start_btn
@@ -596,7 +596,7 @@ def test_desktop_chrome(tmp_path, monkeypatch):
     assert "Turn Off Computer" not in html
     # Menu carries its own icons: generator (svg), Explorer rows
     # (local folder image), log-off door (svg), photo avatar tile.
-    assert menu.count("<svg") >= 2, menu[:500]
+    assert menu.count("<svg") >= 3, menu[:500]
     assert menu.count("videos-folder-icon.png") >= 2, menu[:500]
     assert "profile-picture" in menu
     # JS wiring: count badge populated from /api/reels, log-off handler,
@@ -1079,3 +1079,18 @@ def test_footer_form_contract(tmp_path, monkeypatch):
     assert "setTimeout(generateFooter, 1000)" in js
     assert "3000" not in js
     assert "clipboard" in js
+
+
+def test_carrousel_window_contract(tmp_path, monkeypatch):
+    app, _ = _make_client(tmp_path, monkeypatch)
+    client = TestClient(app)
+    html = client.get("/").text
+    assert 'id="win-carrousel" hidden' in html
+    assert html.count('data-win="win-carrousel"') >= 2
+    assert "Job Carrousel" in html
+    js = client.get("/static/app.js").text
+    assert "loadCarrousel" in js
+    assert "/api/carrousel/filters" in js
+    assert "/api/carrousel/jobs" in js
+    css = client.get("/static/style.css").text
+    assert "car-table" in css

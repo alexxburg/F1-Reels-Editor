@@ -107,6 +107,43 @@
 </div>
 </div>
 </div>
+<div class="window" id="win-carrousel" hidden>
+<div class="title-bar">
+<span class="title-bar-text">Job Carrousel</span>
+<span class="title-bar-controls" aria-hidden="true"><span class="ctl ctl-min"></span><span class="ctl ctl-max"></span><span class="ctl ctl-close"></span></span>
+</div>
+<div class="window-body">
+<div class="car-tabs" role="tablist" aria-label="Carrousel views">
+<button type="button" id="car-tab-search" class="btn btn-secondary" role="tab" aria-selected="true">Search</button>
+<button type="button" id="car-tab-results" class="btn btn-secondary" role="tab" aria-selected="false">Results</button>
+</div>
+<div id="car-pane-search" role="tabpanel" aria-label="Search live jobs">
+<div class="explorer-toolbar">
+<button type="button" id="carrousel-refresh" class="btn btn-secondary">Refresh</button>
+<span class="explorer-path">Live F1 jobs</span>
+</div>
+<div class="car-filters" role="search">
+<label class="car-field">Search <input id="car-search" name="car-search" value="" autocomplete="off"></label>
+<label class="car-field">Team <select id="car-team"><option value="">All teams</option></select></label>
+<label class="car-field">Location <select id="car-location"><option value="">All locations</option></select></label>
+<label class="car-field">Type <select id="car-type"><option value="">All types</option></select></label>
+</div>
+<div id="car-count" class="reel-empty-hint" role="status"></div>
+<div id="car-list" class="car-table reel-list" role="table" aria-label="Live jobs"></div>
+<div class="car-actions">
+<button type="button" id="car-preview" class="btn btn-secondary">Preview</button>
+<button type="button" id="car-zip" class="btn btn-secondary">Download zip</button>
+</div>
+</div>
+<div id="car-pane-results" role="tabpanel" aria-label="Rendered cards" hidden>
+<div class="explorer-toolbar">
+<button type="button" id="car-back" class="btn btn-secondary">Back to search</button>
+<span class="explorer-path">Preview</span>
+</div>
+<div id="car-results" class="car-results"></div>
+</div>
+</div>
+</div>
 </main>
 <div id="start-menu" hidden>
   <div class="start-menu-header">
@@ -117,6 +154,7 @@
     <div class="start-menu-apps">
       <button type="button" data-win="win-generator"><svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg><span class="app-text"><span class="app-name">F1 Reels — Operate</span><span class="app-desc">Render reels from the pit wall.</span></span></button>
       <button type="button" data-win="win-explorer"><img src="/static/videos-folder-icon.png" width="16" height="16" alt=""><span class="app-text"><span class="app-name">Windows Explorer — Reels</span><span class="app-desc">Browse and download finished reels.</span></span></button>
+      <button type="button" data-win="win-carrousel"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="4" width="14" height="10" fill="#c9922e" stroke="#7a5200" stroke-width="1"/><rect x="6" y="2" width="4" height="3" fill="none" stroke="#7a5200" stroke-width="1"/><rect x="1" y="7" width="14" height="2" fill="#ffecab"/><rect x="7" y="9" width="2" height="2" fill="#7a5200"/></svg><span class="app-text"><span class="app-name">Job Carrousel</span><span class="app-desc">Browse live F1 jobs and render PNG cards.</span></span></button>
     </div>
     <div class="start-menu-places">
       <button type="button" data-win="win-explorer"><img src="/static/videos-folder-icon.png" width="16" height="16" alt=""><span>My Reels <span id="menu-reel-count">(0)</span></span></button>
@@ -132,6 +170,7 @@
 <div id="task-buttons">
 <button type="button" data-win="win-generator" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="36" rx="14" ry="2.2" fill="#000" opacity="0.3"/><rect x="4" y="14" width="32" height="20" fill="#33333d" stroke="#000" stroke-width="1"/><rect x="4" y="14" width="32" height="2.5" fill="#5a5a66"/><rect x="4" y="6" width="32" height="9" fill="#46464f" stroke="#000" stroke-width="1" transform="rotate(-6 20 10)"/><g transform="rotate(-6 20 10)"><rect x="6" y="7" width="6" height="7" fill="#fff"/><rect x="14" y="7" width="6" height="7" fill="#fff"/><rect x="22" y="7" width="6" height="7" fill="#fff"/></g><circle cx="12" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="10.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="12" cy="24" r="1.5" fill="#333"/><circle cx="28" cy="24" r="4" fill="#d9d9d9" stroke="#555" stroke-width="1"/><circle cx="26.8" cy="22.8" r="1.1" fill="#fff"/><circle cx="28" cy="24" r="1.5" fill="#333"/></svg>F1 Reels — Operate</button>
 <button type="button" data-win="win-explorer" aria-pressed="false"><img src="/static/videos-folder-icon.png" width="16" height="16" alt="">Windows Explorer — Reels</button>
+<button type="button" data-win="win-carrousel" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="4" width="14" height="10" fill="#c9922e" stroke="#7a5200" stroke-width="1"/><rect x="6" y="2" width="4" height="3" fill="none" stroke="#7a5200" stroke-width="1"/><rect x="1" y="7" width="14" height="2" fill="#ffecab"/><rect x="7" y="9" width="2" height="2" fill="#7a5200"/></svg>Job Carrousel</button>
 </div>
 <span id="tray-clock" aria-label="Clock">--:--</span>
 </footer>
