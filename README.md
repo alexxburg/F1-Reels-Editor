@@ -73,6 +73,14 @@ Job data persists in `./data` (mounted as `/app/data`; override with `DATA_ROOT`
 (override with `CONFIG_PATH`). Bricks are served from the configured
 `bricks_dir` on the server, not uploaded per job.
 
+### Job Carrousel
+
+The third desktop window browses live F1 jobs from the AWS DSQL cluster
+and renders 1500x1500 PNG cards (plus a zip bundle). It needs AWS
+credentials in `.env` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`;
+see `.env.example`); without them the window shows a setup hint and
+everything else keeps working.
+
 ## Tests
 
 ```bash

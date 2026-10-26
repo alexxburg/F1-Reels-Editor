@@ -19,6 +19,7 @@ dependencies = [
     "requests",
     "python-dotenv",
     "faster-whisper",
+    "psycopg2-binary",
 ]
 
 [project.optional-dependencies]

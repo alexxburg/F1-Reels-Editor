@@ -8,6 +8,7 @@ from pathlib import Path
 def test_docker_files_publish_lan_port_with_ffmpeg():
     dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
     assert "ffmpeg" in dockerfile
+    assert "awscli" in dockerfile
     assert "8081" in dockerfile
     assert "0.0.0.0" in dockerfile
     assert "uvicorn" in dockerfile
@@ -22,6 +23,7 @@ def test_web_deps_declared():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
     assert "fastapi" in pyproject
     assert "uvicorn" in pyproject
+    assert "psycopg2" in pyproject
 
 
 def test_moviepy_stack_pinned_compatible():
