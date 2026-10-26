@@ -28,6 +28,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .alignment import generate_voiceover as _generate_voiceover_impl
+from .carrousel.router import router as carrousel_router
 from .config import Settings, _default_project_root, load_config_file
 from .endcard import EndcardConfig
 from .footer import generate_footer as _generate_footer_impl
@@ -664,6 +665,8 @@ def create_app(
         shutil.rmtree(jobs_root / job_id, ignore_errors=True)
         logger.info("Job %s deleted.", job_id)
         return {"deleted": job_id}
+
+    app.include_router(carrousel_router)
 
     return app
 

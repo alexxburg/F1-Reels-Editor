@@ -164,3 +164,119 @@ def test_team_display_fallback_renders_text():
     assert img.size == (1500, 1500)
     px = np.asarray(img)
     assert (px.mean(axis=2) > 200).mean() > 0.005
+
+
+def _carrousel_client(tmp_path, monkeypatch):
+    from test_webapp import _make_client
+    from fastapi.testclient import TestClient
+
+    app, _ = _make_client(tmp_path, monkeypatch)
+    return TestClient(app)
+
+
+def _stub_query(monkeypatch, rows=None, error=None):
+    from f1_reels.carrousel import router as router_mod
+
+    calls = []
+
+    def fake(sql, params=None):
+        calls.append((sql, list(params or [])))
+        if error is not None:
+            raise error
+        return list(rows or [])
+
+    monkeypatch.setattr(router_mod, "query_db", fake)
+    return calls
+
+
+ROW = (7, "Test Pilot", "williams", None, "Full-time", "Grove", "https://x")
+
+
+def test_jobs_filters_pass_params_not_sql(tmp_path, monkeypatch):
+    client = _carrousel_client(tmp_path, monkeypatch)
+    calls = _stub_query(monkeypatch, rows=[ROW])
+    r = client.get(
+        "/api/carrousel/jobs",
+        params={"search": "pilot", "team": "williams", "location": "Grove", "type": "Full-time"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()[0]["title"] == "Test Pilot"
+    sql, params = calls[0]
+    assert "ILIKE" in sql
+    assert "%pilot%" in params
+    assert "williams" in params and "Grove" in params and "Full-time" in params
+
+
+def test_filters_shape(tmp_path, monkeypatch):
+    client = _carrousel_client(tmp_path, monkeypatch)
+    _stub_query(
+        monkeypatch,
+        rows=[("williams",)],
+    )
+    r = client.get("/api/carrousel/filters")
+    assert r.status_code == 200, r.text
+    assert set(r.json()) == {"teams", "locations", "types"}
+
+
+def test_image_rejects_bad_ids(tmp_path, monkeypatch):
+    client = _carrousel_client(tmp_path, monkeypatch)
+    _stub_query(monkeypatch, rows=[ROW])
+    bad = [
+        {},
+        {"ids": []},
+        {"ids": list(range(25))},
+        {"ids": ["a"]},
+        {"ids": [True]},
+        {"ids": [None]},
+    ]
+    for payload in bad:
+        r = client.post("/api/carrousel/image", json=payload)
+        assert r.status_code == 400, payload
+
+
+def test_image_404_and_zip_order(tmp_path, monkeypatch):
+    import io
+    import zipfile
+
+    client = _carrousel_client(tmp_path, monkeypatch)
+    _stub_query(monkeypatch, rows=[])
+    assert client.post("/api/carrousel/image", json={"ids": [1]}).status_code == 404
+    assert client.get("/api/carrousel/image/1").status_code == 404
+    assert client.get("/api/carrousel/images.zip?ids=").status_code == 400
+
+    rows = [
+        (1, "A", "williams", None, "Full-time", "Grove", "https://x"),
+        (2, "B", "haas", None, "Full-time", "Banbury", "https://x"),
+    ]
+    _stub_query(monkeypatch, rows=rows)
+    r = client.get("/api/carrousel/images.zip?ids=2,1")
+    assert r.status_code == 200, r.text
+    assert "zip" in r.headers["content-type"]
+    zf = zipfile.ZipFile(io.BytesIO(r.content))
+    assert zf.namelist() == ["2.png", "1.png"]
+    assert zf.read("2.png")[:8] == b"\x89PNG\r\n\x1a\n"
+    r = client.get("/api/carrousel/image/2")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+
+
+def test_cred_failure_shape(tmp_path, monkeypatch):
+    from f1_reels.carrousel import db as db_mod
+
+    client = _carrousel_client(tmp_path, monkeypatch)
+    _stub_query(monkeypatch, error=db_mod.TokenError("nope"))
+    r = client.get("/api/carrousel/jobs")
+    assert r.status_code == 500, r.text
+    assert "AWS_ACCESS_KEY_ID" in r.json()["error"]
+
+
+def test_sql_injection_search_returns_rows(tmp_path, monkeypatch):
+    client = _carrousel_client(tmp_path, monkeypatch)
+    calls = _stub_query(monkeypatch, rows=[ROW])
+    raw = "x' OR '1'='1"
+    r = client.get("/api/carrousel/jobs", params={"search": raw})
+    assert r.status_code == 200, r.text
+    assert len(r.json()) == 1
+    sql, params = calls[0]
+    assert sql.count("ILIKE") == 3
+    assert f"%{raw}%" in params
