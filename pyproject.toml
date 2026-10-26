@@ -32,7 +32,7 @@ f1-reels = "f1_reels.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-f1_reels = ["templates/*.html", "static/*", "footer_prompt.md"]
+f1_reels = ["templates/*.html", "static/*", "static/fonts/*", "footer_prompt.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

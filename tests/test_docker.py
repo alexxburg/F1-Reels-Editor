@@ -41,3 +41,13 @@ def test_readme_documents_lan_webapp():
     assert "docker compose up --build" in readme
     assert "8082" in readme
     assert "OPENROUTER_API_KEY" in readme
+
+
+def test_package_data_covers_nested_static_fonts():
+    import tomllib
+    from pathlib import Path
+
+    package_data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))[
+        "tool"
+    ]["setuptools"]["package-data"]["f1_reels"]
+    assert any("fonts" in pattern for pattern in package_data), package_data

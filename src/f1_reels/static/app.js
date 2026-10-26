@@ -515,13 +515,14 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
     } catch (_) {
       /* filters are best-effort; jobs carry the error message */
     }
-    list.querySelectorAll(".car-row, .car-empty").forEach((node) => node.remove());
     if (err) {
-      const p = document.createElement("p");
-      p.className = "car-empty";
-      p.textContent = `Could not load jobs: ${err}`;
-      list.appendChild(p);
-    } else if (!jobs.length) {
+      if (count) {
+        count.textContent = `Could not load jobs: ${err}`;
+      }
+      return;
+    }
+    list.querySelectorAll(".car-row, .car-empty").forEach((node) => node.remove());
+    if (!jobs.length) {
       const p = document.createElement("p");
       p.className = "car-empty";
       p.textContent = "No live jobs match the current filters.";
@@ -557,13 +558,16 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
         });
         const linkCell = document.createElement("span");
         linkCell.className = "car-cell";
-        if (job.link) {
+        if (job.link && /^https?:\/\//i.test(job.link)) {
           const anchor = document.createElement("a");
           anchor.href = job.link;
           anchor.textContent = "Open";
           anchor.target = "_blank";
           anchor.rel = "noopener";
           linkCell.appendChild(anchor);
+        } else if (job.link) {
+          linkCell.textContent = "Open";
+          linkCell.title = "Link hidden: unsupported address";
         }
         row.appendChild(linkCell);
         list.appendChild(row);
@@ -590,11 +594,17 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       alert("Select at most 24 jobs.");
       return;
     }
-    const res = await fetch("/api/carrousel/image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
+    let res;
+    try {
+      res = await fetch("/api/carrousel/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+    } catch (e) {
+      alert(`Preview failed: ${(e && e.message) || e}`);
+      return;
+    }
     if (!res.ok) {
       alert(`Preview failed: ${res.status}`);
       return;
@@ -622,7 +632,13 @@ document.getElementById("reel-form").addEventListener("submit", async (event) =>
       return;
     }
     const query = ids.join(",");
-    const res = await fetch(`/api/carrousel/images.zip?ids=${encodeURIComponent(query)}`);
+    let res;
+    try {
+      res = await fetch(`/api/carrousel/images.zip?ids=${encodeURIComponent(query)}`);
+    } catch (e) {
+      alert(`Zip failed: ${(e && e.message) || e}`);
+      return;
+    }
     if (!res.ok) {
       alert(`Zip failed: ${res.status}`);
       return;

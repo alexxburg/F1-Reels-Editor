@@ -280,3 +280,9 @@ def test_sql_injection_search_returns_rows(tmp_path, monkeypatch):
     sql, params = calls[0]
     assert sql.count("ILIKE") == 3
     assert f"%{raw}%" in params
+
+
+def test_default_dsql_host_matches_production_cluster():
+    from f1_reels.carrousel import db
+
+    assert db.DSQL_HOST == "fbt7qrxfs2egnxikn4bqy3mbhq.dsql.eu-north-1.on.aws"

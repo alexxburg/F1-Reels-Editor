@@ -5,7 +5,7 @@ import subprocess
 import time
 
 DSQL_HOST = os.environ.get(
-    "DSQL_HOST", "fbt7qrxfs2egnxik4bq3mbhd.q3dswx3mb4bs.on.aws"
+    "DSQL_HOST", "fbt7qrxfs2egnxikn4bqy3mbhq.dsql.eu-north-1.on.aws"
 )
 AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 DSQL_USER = os.environ.get("DSQL_USER", "admin")
